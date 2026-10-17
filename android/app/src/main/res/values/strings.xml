@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Brox</string>
+    <string name="title_activity_main">Brox</string>
+    <string name="package_name">com.conq96.brox</string>
+    <string name="custom_url_scheme">com.conq96.brox</string>
+</resources>
