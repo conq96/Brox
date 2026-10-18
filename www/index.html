@@ -5,51 +5,474 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Brox Browser</title>
     <style>
+        :root {
+            --bg-color: #000000;
+            --text-color: #aaaaaa;
+            --border-color: #333333;
+            --hover-bg: #1a1a1a;
+            --item-bg: #222222;
+            --incognito-bg: #1a0f2e;
+            --primary: #007bff;
+            --shield-active: #f39c12;
+            --secure-lock: #2ecc71;
+        }
+
         body, html {
             margin: 0; padding: 0; height: 100%;
+            background-color: var(--bg-color); color: var(--text-color);
             font-family: sans-serif; display: flex; flex-direction: column;
+            overflow: hidden; transition: background-color 0.3s;
         }
+
+        /* Üst Araç Çubuğu */
         #toolbar {
-            display: flex; padding: 10px; background-color: #f1f1f1;
-            border-bottom: 1px solid #ccc;
+            display: flex; align-items: center; padding: 10px; gap: 5px;
+            background-color: var(--bg-color); border-bottom: 1px solid var(--border-color);
+            z-index: 10; transition: background-color 0.3s;
         }
+        body.incognito #toolbar { background-color: var(--incognito-bg); }
+
+        .input-container {
+            display: flex; flex-grow: 1; align-items: center;
+            background-color: var(--item-bg); border: 1px solid var(--border-color);
+            border-radius: 8px; padding: 0 10px; margin-right: 10px;
+        }
+
+        .url-icon { font-size: 14px; margin-right: 5px; cursor: pointer; }
+        #ssl-lock { color: var(--secure-lock); }
+        #ad-shield { color: var(--shield-active); }
+
         #url-input {
-            flex-grow: 1; padding: 8px; border: 1px solid #ccc;
-            border-radius: 4px; margin-right: 10px; font-size: 16px;
+            flex-grow: 1; padding: 10px 0; background: transparent; border: none;
+            color: var(--text-color); font-size: 16px; outline: none; width: 100%;
         }
-        #go-btn {
-            padding: 8px 15px; background-color: #007bff; color: white;
-            border: none; border-radius: 4px; font-size: 16px; cursor: pointer;
+        
+        .icon-btn {
+            background: none; border: none; color: var(--text-color);
+            font-size: 22px; padding: 5px; cursor: pointer; border-radius: 4px;
         }
-        #webview {
-            flex-grow: 1; border: none; width: 100%;
+        .icon-btn:hover { background-color: var(--hover-bg); }
+        
+        #add-shortcut-btn { margin-right: 5px; }
+
+        /* Açılır Menü */
+        #dropdown-menu {
+            display: none; position: absolute; top: 60px; right: 10px;
+            background-color: var(--item-bg); border: 1px solid var(--border-color);
+            border-radius: 8px; flex-direction: column; min-width: 230px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.8); z-index: 20; max-height: 75vh; overflow-y: auto;
         }
+        .menu-item {
+            padding: 12px 15px; color: var(--text-color); border-bottom: 1px solid var(--border-color);
+            cursor: pointer; text-align: left; background: none; border-top: none; border-left: none; border-right: none;
+            font-size: 15px; display: flex; align-items: center; gap: 10px;
+        }
+        .menu-item:last-child { border-bottom: none; }
+        .menu-item:hover { background-color: var(--hover-bg); }
+
+        /* Paneller & Modallar */
+        .panel {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.8); z-index: 30; align-items: center; justify-content: center;
+        }
+        .panel-content {
+            background-color: var(--item-bg); width: 90%; max-width: 400px; max-height: 85%;
+            border-radius: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column;
+        }
+        .panel-header {
+            padding: 15px; border-bottom: 1px solid var(--border-color); font-size: 18px; font-weight: bold;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .panel-body { padding: 15px; overflow-y: auto; flex-grow: 1; }
+        
+        /* Yakınlaştırma */
+        #zoom-panel-float {
+            display: none; position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background-color: var(--item-bg); padding: 10px 15px; border-radius: 20px;
+            border: 1px solid var(--border-color); align-items: center; gap: 10px; z-index: 20;
+        }
+        #zoom-panel-float button { font-size: 18px; border-radius: 8px; padding: 5px 10px; }
+        .zoom-circle { width: 40px; height: 40px; border-radius: 50% !important; padding: 0 !important; }
+
+        /* İzin / Ayar Satırları */
+        .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #333; }
+        .setting-row:last-child { border-bottom: none; }
+        
+        .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #555; transition: .4s; border-radius: 20px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--primary); }
+        input:checked + .slider:before { transform: translateX(20px); }
+        
+        select.styled-select { background: var(--bg-color); color: var(--text-color); border: 1px solid var(--border-color); padding: 5px; border-radius: 4px; }
+
+        /* Ana İçerik */
+        #home-content { flex-grow: 1; padding: 20px; overflow-y: auto; }
+        .section-title { font-size: 18px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px; }
+        .grid-container { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 30px; }
+        .grid-item {
+            width: 70px; height: 70px; background-color: var(--item-bg);
+            border: 1px dashed var(--text-color); border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 30px; cursor: pointer; flex-direction: column; position: relative;
+        }
+        .grid-item span { font-size: 12px; margin-top: 5px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 60px; }
+        
+        /* WebView */
+        #webview-container { display: none; flex-grow: 1; width: 100%; position: relative; overflow: hidden; }
+        #webview { width: 100%; height: 100%; border: none; transform-origin: top left; }
+
+        /* Pull-to-Refresh Animasyonu */
+        #pull-to-refresh {
+            position: absolute; top: -50px; left: 50%; transform: translateX(-50%);
+            width: 40px; height: 40px; background-color: var(--item-bg);
+            border: 1px solid var(--border-color); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.8); z-index: 15;
+            transition: top 0.2s ease-out; pointer-events: none;
+        }
+        .refresh-icon { font-size: 24px; color: var(--text-color); }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        .spinning { animation: spin 1s linear infinite; }
     </style>
 </head>
 <body>
+
     <div id="toolbar">
-        <input type="url" id="url-input" placeholder="URL girin..." value="https://example.com">
-        <button id="go-btn">Git</button>
+        <button class="icon-btn" id="home-btn" title="Ana Sayfa">🏠</button>
+        <div class="input-container">
+            <span class="url-icon" id="ssl-lock" title="Güvenli Bağlantı">🔒</span>
+            <span class="url-icon" id="ad-shield" title="Brox Shields Aktif">🛡️</span>
+            <input type="url" id="url-input" placeholder="Arama yapın veya URL girin...">
+        </div>
+        <button class="icon-btn" id="add-shortcut-btn" title="Kısayol Ekle">+</button>
+        <button class="icon-btn" id="menu-btn" title="Menü">⋮</button>
     </div>
-    <iframe id="webview" src="https://example.com"></iframe>
+
+    <div id="dropdown-menu">
+        <button class="menu-item" id="menu-refresh"><span class="ui-text" data-key="refresh">🔄 Yenile</span></button>
+        <button class="menu-item" id="menu-incognito"><span class="ui-text" data-key="incognito">🕵️ Gizli Moda Geç</span></button>
+        <button class="menu-item" id="menu-share"><span class="ui-text" data-key="share">📤 Paylaş</span></button>
+        <button class="menu-item" id="menu-find"><span class="ui-text" data-key="find">🔎 Sayfada Bul</span></button>
+        <button class="menu-item" id="menu-desktop"><span class="ui-text" data-key="desktop">💻 Masaüstü Sitesi İsteyin</span></button>
+        <button class="menu-item" id="menu-translate"><span class="ui-text" data-key="translate">🌍 Çevir</span></button>
+        <button class="menu-item" id="menu-reader"><span class="ui-text" data-key="reader">📖 Okuma Modu</span></button>
+        <button class="menu-item" id="menu-tts"><span class="ui-text" data-key="tts">🗣️ Seslendir</span></button>
+        <button class="menu-item" id="menu-downloads"><span class="ui-text" data-key="downloads">⬇️ İndirilenler</span></button>
+        <button class="menu-item" id="menu-history"><span class="ui-text" data-key="history">🕒 Geçmiş</span></button>
+        <button class="menu-item" id="menu-print"><span class="ui-text" data-key="print">🖨️ Yazdır / PDF'e Kaydet</span></button>
+        <button class="menu-item" id="menu-zoom"><span class="ui-text" data-key="zoom">🔍 Yakınlaştır / Uzaklaştır</span></button>
+        <button class="menu-item" id="menu-permissions"><span class="ui-text" data-key="permissions">🛡️ Site İzinleri</span></button>
+        <button class="menu-item" id="menu-devtools"><span class="ui-text" data-key="devtools">🛠️ Geliştirici Araçları</span></button>
+        <button class="menu-item" id="menu-plugins"><span class="ui-text" data-key="plugins">🧩 Eklentiler (Plugins)</span></button>
+        <button class="menu-item" id="menu-settings"><span class="ui-text" data-key="settings">⚙️ Ayarlar</span></button>
+    </div>
+
+    <div id="zoom-panel-float">
+        <button class="icon-btn zoom-circle" id="zoom-out">-</button>
+        <span id="zoom-level">%100</span>
+        <button class="icon-btn zoom-circle" id="zoom-in">+</button>
+        <button class="icon-btn" id="zoom-reset"><span class="ui-text" data-key="zoomReset">Sıfırla</span></button>
+        <button class="icon-btn" id="zoom-close"><span class="ui-text" data-key="zoomClose">Kapat</span></button>
+    </div>
+
+    <div class="panel" id="permissions-modal">
+        <div class="panel-content">
+            <div class="panel-header"><span class="ui-text" data-key="permissionsTitle">🛡️ İzin Yöneticisi</span><button class="icon-btn close-panel">✖</button></div>
+            <div class="panel-body" id="permissions-list"></div>
+        </div>
+    </div>
+
+    <div class="panel" id="settings-modal">
+        <div class="panel-content">
+            <div class="panel-header"><span class="ui-text" data-key="settingsTitle">⚙️ Brox Ayarları</span><button class="icon-btn close-panel">✖</button></div>
+            <div class="panel-body">
+                <div class="setting-row">
+                    <span class="ui-text" data-key="displayLang">Görüntüleme Dili</span>
+                    <select class="styled-select" id="lang-select">
+                        <option value="tr">Türkçe</option>
+                        <option value="en">English</option>
+                        <option value="de">Deutsch</option>
+                        <option value="es">Español</option>
+                    </select>
+                </div>
+                <div class="setting-row">
+                    <span class="ui-text" data-key="searchEngine">Arama Motoru</span>
+                    <select class="styled-select">
+                        <option>Google</option><option>DuckDuckGo</option><option>Bing</option><option>Yandex</option>
+                    </select>
+                </div>
+                <div class="setting-row">
+                    <span class="ui-text" data-key="shieldBlock">Reklam ve İzleyici Engelleme (Shields)</span>
+                    <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+                </div>
+                <div class="setting-row">
+                    <span class="ui-text" data-key="cookieBlock">Çerezleri Engelle (Brave Strict)</span>
+                    <label class="switch"><input type="checkbox"><span class="slider"></span></label>
+                </div>
+                <div class="setting-row">
+                    <span class="ui-text" data-key="bgPlayback">Arkaplanda Oynatma (YouTube vb.)</span>
+                    <label class="switch" id="bg-playback-toggle"><input type="checkbox" checked><span class="slider"></span></label>
+                </div>
+                <div class="setting-row">
+                    <span class="ui-text" data-key="clearHistory">Her Çıkışta Geçmişi Sil</span>
+                    <label class="switch"><input type="checkbox"><span class="slider"></span></label>
+                </div>
+                <div class="setting-row">
+                    <span class="ui-text" data-key="secureDns">Güvenli DNS (DoH) Kullan</span>
+                    <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="home-content">
+        <div class="section-title ui-text" data-key="shortcutsTitle">Kısayollar</div>
+        <div class="grid-container" id="shortcuts-grid">
+            <div class="grid-item add-btn" onclick="addManualShortcut()">+</div>
+        </div>
+    </div>
+
+    <div id="webview-container">
+        <!-- Dairesel Yenileme İndikatörü -->
+        <div id="pull-to-refresh">
+            <div class="refresh-icon">↻</div>
+        </div>
+        <iframe id="webview" src="" allow="autoplay; fullscreen; picture-in-picture"></iframe>
+    </div>
 
     <script>
         const urlInput = document.getElementById('url-input');
-        const goBtn = document.getElementById('go-btn');
+        const menuBtn = document.getElementById('menu-btn');
+        const homeBtn = document.getElementById('home-btn');
+        const addShortcutBtn = document.getElementById('add-shortcut-btn');
+        const dropdownMenu = document.getElementById('dropdown-menu');
+        const homeContent = document.getElementById('home-content');
+        const webviewContainer = document.getElementById('webview-container');
         const webview = document.getElementById('webview');
+        
+        let isIncognito = false;
+        let currentLang = 'tr';
 
-        function loadUrl() {
-            let url = urlInput.value.trim();
-            if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                url = 'https://' + url;
+        // Çeviri Sözlüğü (UI)
+        const uiTranslations = {
+            tr: {
+                refresh: "🔄 Yenile", incognito: "🕵️ Gizli Moda Geç", share: "📤 Paylaş", find: "🔎 Sayfada Bul",
+                desktop: "💻 Masaüstü Sitesi İsteyin", translate: "🌍 Çevir", reader: "📖 Okuma Modu",
+                tts: "🗣️ Seslendir", downloads: "⬇️ İndirilenler", history: "🕒 Geçmiş", print: "🖨️ Yazdır / PDF'e Kaydet",
+                zoom: "🔍 Yakınlaştır / Uzaklaştır", permissions: "🛡️ Site İzinleri", devtools: "🛠️ Geliştirici Araçları",
+                plugins: "🧩 Eklentiler (Plugins)", settings: "⚙️ Ayarlar", zoomReset: "Sıfırla", zoomClose: "Kapat",
+                permissionsTitle: "🛡️ İzin Yöneticisi", settingsTitle: "⚙️ Brox Ayarları", displayLang: "Görüntüleme Dili",
+                searchEngine: "Arama Motoru", shieldBlock: "Reklam ve İzleyici Engelleme (Shields)", cookieBlock: "Çerezleri Engelle (Brave Strict)",
+                bgPlayback: "Arkaplanda Oynatma (YouTube vb.)", clearHistory: "Her Çıkışta Geçmişi Sil", secureDns: "Güvenli DNS (DoH) Kullan", shortcutsTitle: "Kısayollar",
+                placeholder: "Arama yapın veya URL girin..."
+            },
+            en: {
+                refresh: "🔄 Refresh", incognito: "🕵️ Go Incognito", share: "📤 Share", find: "🔎 Find in Page",
+                desktop: "💻 Desktop Site", translate: "🌍 Translate", reader: "📖 Reader Mode",
+                tts: "🗣️ Read Aloud", downloads: "⬇️ Downloads", history: "🕒 History", print: "🖨️ Print / Save PDF",
+                zoom: "🔍 Zoom In / Out", permissions: "🛡️ Site Permissions", devtools: "🛠️ Developer Tools",
+                plugins: "🧩 Plugins", settings: "⚙️ Settings", zoomReset: "Reset", zoomClose: "Close",
+                permissionsTitle: "🛡️ Permission Manager", settingsTitle: "⚙️ Brox Settings", displayLang: "Display Language",
+                searchEngine: "Search Engine", shieldBlock: "Ad & Tracker Blocking (Shields)", cookieBlock: "Block Cookies (Strict)",
+                bgPlayback: "Background Playback (YouTube etc.)", clearHistory: "Clear History on Exit", secureDns: "Use Secure DNS (DoH)", shortcutsTitle: "Shortcuts",
+                placeholder: "Search or enter URL..."
+            },
+            de: {
+                refresh: "🔄 Aktualisieren", incognito: "🕵️ Inkognito-Modus", share: "📤 Teilen", find: "🔎 Suchen",
+                desktop: "💻 Desktop-Website", translate: "🌍 Übersetzen", reader: "📖 Lesemodus",
+                tts: "🗣️ Vorlesen", downloads: "⬇️ Downloads", history: "🕒 Verlauf", print: "🖨️ Drucken / PDF",
+                zoom: "🔍 Zoomen", permissions: "🛡️ Berechtigungen", devtools: "🛠️ Entwicklertools",
+                plugins: "🧩 Plugins", settings: "⚙️ Einstellungen", zoomReset: "Zurücksetzen", zoomClose: "Schließen",
+                permissionsTitle: "🛡️ Berechtigungsmanager", settingsTitle: "⚙️ Brox Einstellungen", displayLang: "Anzeigesprache",
+                searchEngine: "Suchmaschine", shieldBlock: "Werbe- & Tracker-Blocker", cookieBlock: "Cookies blockieren",
+                bgPlayback: "Hintergrundwiedergabe (YouTube etc.)", clearHistory: "Verlauf beim Beenden löschen", secureDns: "Sicheres DNS (DoH)", shortcutsTitle: "Verknüpfungen",
+                placeholder: "Suchen oder URL eingeben..."
+            },
+            es: {
+                refresh: "🔄 Actualizar", incognito: "🕵️ Modo Incógnito", share: "📤 Compartir", find: "🔎 Buscar en página",
+                desktop: "💻 Sitio de escritorio", translate: "🌍 Traducir", reader: "📖 Modo lectura",
+                tts: "🗣️ Leer en voz alta", downloads: "⬇️ Descargas", history: "🕒 Historial", print: "🖨️ Imprimir / PDF",
+                zoom: "🔍 Acercar / Alejar", permissions: "🛡️ Permisos del sitio", devtools: "🛠️ Herramientas de desarrollador",
+                plugins: "🧩 Complementos (Plugins)", settings: "⚙️ Configuración", zoomReset: "Restablecer", zoomClose: "Cerrar",
+                permissionsTitle: "🛡️ Gestor de Permisos", settingsTitle: "⚙️ Ajustes Brox", displayLang: "Idioma de visualización",
+                searchEngine: "Motor de búsqueda", shieldBlock: "Bloqueador de anuncios y rastreadores", cookieBlock: "Bloquear cookies",
+                bgPlayback: "Reproducción en segundo plano", clearHistory: "Borrar historial al salir", secureDns: "Usar DNS seguro (DoH)", shortcutsTitle: "Atajos",
+                placeholder: "Buscar o introducir URL..."
             }
-            webview.src = url;
+        };
+
+        document.getElementById('lang-select').addEventListener('change', (e) => {
+            currentLang = e.target.value;
+            document.querySelectorAll('.ui-text').forEach(el => {
+                const key = el.getAttribute('data-key');
+                if (uiTranslations[currentLang][key]) {
+                    el.innerText = uiTranslations[currentLang][key];
+                }
+            });
+            urlInput.placeholder = uiTranslations[currentLang]['placeholder'];
+            if(webview.src && homeContent.style.display !== 'block') {
+                loadPage(urlInput.value); 
+            }
+        });
+
+        // Sayfa Gezinme & Otomatik Çeviri
+        function loadPage(url) {
+            if(url === "") {
+                webviewContainer.style.display = 'none';
+                homeContent.style.display = 'block';
+                webview.src = "";
+                return;
+            }
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                if(url.includes('.') && !url.includes(' ')) url = 'https://' + url;
+                else url = 'https://www.google.com/search?q=' + encodeURIComponent(url);
+            }
+            
+            document.getElementById('ssl-lock').style.color = url.startsWith('https') ? 'var(--secure-lock)' : 'gray';
+            document.getElementById('ssl-lock').innerText = url.startsWith('https') ? '🔒' : '🔓';
+
             urlInput.value = url;
+
+            let loadUrl = url;
+            if (currentLang !== 'tr') { 
+                loadUrl = `https://translate.google.com/translate?sl=auto&tl=${currentLang}&u=${encodeURIComponent(url)}`;
+            }
+
+            homeContent.style.display = 'none';
+            webviewContainer.style.display = 'block';
+            webview.src = loadUrl;
+            dropdownMenu.style.display = 'none';
         }
 
-        goBtn.addEventListener('click', loadUrl);
-        urlInput.addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') loadUrl();
+        urlInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') loadPage(urlInput.value.trim());
+        });
+        homeBtn.addEventListener('click', () => { loadPage(""); urlInput.value = ""; });
+
+        // Global Boşluğa Tıklama Yönetimi
+        document.addEventListener('click', (e) => {
+            if (dropdownMenu.style.display === 'flex' && !dropdownMenu.contains(e.target) && !menuBtn.contains(e.target)) {
+                dropdownMenu.style.display = 'none';
+            }
+            document.querySelectorAll('.panel').forEach(panel => {
+                if (panel.style.display === 'flex' && e.target === panel) {
+                    panel.style.display = 'none';
+                }
+            });
+        });
+
+        menuBtn.addEventListener('click', () => { dropdownMenu.style.display = dropdownMenu.style.display === 'flex' ? 'none' : 'flex'; });
+
+        // Bildirim: Arkaplan Oynatma Ayarı
+        document.getElementById('bg-playback-toggle').addEventListener('change', (e) => {
+            if (e.target.checked) {
+                alert("Arkaplanda oynatma aktif edildi. Android yerel kodlarına geçildiğinde YouTube'un Sayfa Görünürlük API'si manipüle edilerek arkaplanda sorunsuz çalışması sağlanacak.");
+            }
+        });
+
+        addShortcutBtn.addEventListener('click', () => {
+            const currentUrl = urlInput.value;
+            if(!currentUrl || homeContent.style.display === 'block') return alert("Önce bir site açın.");
+            const name = prompt("Kısayol adı:");
+            if(name) { createShortcutElement(name, currentUrl); alert('Eklendi.'); }
+        });
+
+        document.getElementById('menu-refresh').addEventListener('click', () => {
+            if(webview.src) webview.src = webview.src;
+            dropdownMenu.style.display = 'none';
+        });
+
+        document.getElementById('menu-incognito').addEventListener('click', () => {
+            isIncognito = !isIncognito;
+            document.body.classList.toggle('incognito');
+            dropdownMenu.style.display = 'none';
+        });
+
+        document.querySelectorAll('.close-panel').forEach(btn => {
+            btn.addEventListener('click', () => { document.querySelectorAll('.panel').forEach(p => p.style.display = 'none'); });
+        });
+        document.getElementById('menu-permissions').addEventListener('click', () => {
+            document.getElementById('permissions-modal').style.display = 'flex'; dropdownMenu.style.display = 'none';
+        });
+        document.getElementById('menu-settings').addEventListener('click', () => {
+            document.getElementById('settings-modal').style.display = 'flex'; dropdownMenu.style.display = 'none';
+        });
+
+        const perms = ["Kamera", "Mikrofon", "Konum", "Bildirimler", "JavaScript", "Çerezler"];
+        const permsContainer = document.getElementById('permissions-list');
+        perms.forEach(perm => {
+            const isChecked = (perm === "JavaScript" || perm === "Çerezler") ? "checked" : "";
+            permsContainer.innerHTML += `<div class="setting-row"><span>${perm}</span><label class="switch"><input type="checkbox" ${isChecked}><span class="slider"></span></label></div>`;
+        });
+
+        window.addManualShortcut = function() {
+            const name = prompt("Site veya Klasör adı:");
+            const url = prompt("URL (Klasör ise boş bırakın):");
+            if (name) createShortcutElement(name, url);
+        };
+
+        function createShortcutElement(name, url) {
+            const newItem = document.createElement('div');
+            newItem.className = 'grid-item';
+            newItem.innerHTML = url ? `🌐<span>${name}</span>` : `📁<span>${name}</span>`;
+            if(url) newItem.onclick = () => loadPage(url.startsWith('http') ? url : 'https://' + url);
+
+            let pressTimer;
+            newItem.addEventListener('touchstart', () => {
+                pressTimer = setTimeout(() => { if(confirm(`${name} silinsin mi?`)) newItem.remove(); }, 800);
+            });
+            newItem.addEventListener('touchend', () => clearTimeout(pressTimer));
+            newItem.addEventListener('touchmove', () => clearTimeout(pressTimer));
+
+            document.getElementById('shortcuts-grid').insertBefore(newItem, document.querySelector('.add-btn'));
+        }
+
+        // Kusursuz Pull-To-Refresh
+        let startY = 0;
+        let isPulling = false;
+        const ptr = document.getElementById('pull-to-refresh');
+        const refreshIcon = ptr.querySelector('.refresh-icon');
+
+        document.addEventListener('touchstart', (e) => {
+            if (homeContent.style.display === 'none' && e.touches[0].clientY <= 80) {
+                startY = e.touches[0].clientY;
+                isPulling = true;
+                ptr.style.transition = 'none'; 
+            }
+        }, {passive: true});
+
+        document.addEventListener('touchmove', (e) => {
+            if (!isPulling) return;
+            const currentY = e.touches[0].clientY;
+            const pullDistance = currentY - startY;
+
+            if (pullDistance > 0 && pullDistance < 150) {
+                ptr.style.top = `${pullDistance - 50}px`; 
+                refreshIcon.style.transform = `rotate(${pullDistance * 2.5}deg)`;
+            }
+        }, {passive: true});
+
+        document.addEventListener('touchend', (e) => {
+            if (!isPulling) return;
+            isPulling = false;
+            ptr.style.transition = 'top 0.3s ease-out';
+
+            const endY = e.changedTouches[0].clientY;
+            const pullDistance = endY - startY;
+
+            if (pullDistance > 80) {
+                ptr.style.top = '20px'; 
+                refreshIcon.classList.add('spinning'); 
+                if (webview.src) webview.src = webview.src; 
+                setTimeout(() => {
+                    ptr.style.top = '-50px';
+                    refreshIcon.classList.remove('spinning');
+                }, 1500);
+            } else {
+                ptr.style.top = '-50px';
+            }
         });
     </script>
 </body>
