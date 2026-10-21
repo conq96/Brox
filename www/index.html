@@ -115,6 +115,7 @@
 
         /* WebView & Pull to Refresh */
         #webview-container { display: flex; flex-grow: 1; width: 100%; position: relative; overflow: hidden; background: #fff; }
+        #webview { width: 100%; height: 100%; border: none; transform-origin: top left; }
         #pull-to-refresh { position: absolute; top: -50px; left: 50%; transform: translateX(-50%); width: 40px; height: 40px; background-color: var(--bg-surface); border: 1px solid var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 15; transition: top 0.2s; pointer-events: none; }
         .refresh-icon { font-size: 20px; color: var(--text-main); }
         @keyframes spin { 100% { transform: rotate(360deg); } }
@@ -200,9 +201,10 @@
         <div class="shortcut-grid" id="shortcut-grid"></div>
     </div> 
 
-    <!-- WebView Container (Iframe Kaldirildi, Native Motor Buraya Oturacak) -->
+    <!-- WebView & Pull to Refresh -->
     <div id="webview-container">
         <div id="pull-to-refresh"><div class="refresh-icon">↻</div></div>
+        <iframe id="webview" src="" allow="autoplay; fullscreen"></iframe>
     </div> 
 
     <!-- Aksiyon Menüsü (Bottom Sheet) -->
@@ -217,7 +219,7 @@
 
     <script>
         const urlInput = document.getElementById('url-input');
-        // Iframe tamamen kaldırıldığı için 'webview' değişkeni silindi.
+        const webview = document.getElementById('webview');
         const webviewContainer = document.getElementById('webview-container');
         const homeContent = document.getElementById('home-content');
         const dropdownMenu = document.getElementById('dropdown-menu');
@@ -236,7 +238,6 @@
         const actionSheetOverlay = document.getElementById('action-sheet-overlay');
         const actionSheetBody = document.getElementById('action-sheet-body');
         const actionSheetTitle = document.getElementById('action-sheet-title');
-        
         function showToast(msg) {
             const t = document.getElementById("toast"); t.innerText = msg;
             t.classList.add("show"); setTimeout(() => t.classList.remove("show"), 3000);
@@ -254,6 +255,7 @@
 
         function renderShortcuts() {
             shortcutGrid.innerHTML = '';
+            // Header Güncellemesi
             if (currentFolderId === 'root') {
                 currentFolderTitle.innerText = 'SIK KULLANILANLAR';
                 backFolderBtn.style.display = 'none';
@@ -272,22 +274,26 @@
                     <div class="shortcut-icon ${item.type}">${iconChar}</div>
                     <div class="shortcut-name">${item.name}</div>
                 `;
+                // Normal Tıklama
                 div.onclick = () => {
                     if (item.type === 'folder') { currentFolderId = item.id; renderShortcuts(); }
                     else { loadUrl(item.url); }
                 }; 
 
+                // Basılı Tutma (Long Press) İşlemleri
                 let pressTimer;
                 div.addEventListener('touchstart', (e) => {
                     pressTimer = window.setTimeout(() => { openItemOptions(item); }, 600);
                 }, {passive: true});
                 div.addEventListener('touchend', () => clearTimeout(pressTimer));
                 div.addEventListener('touchmove', () => clearTimeout(pressTimer));
+                // PC için sağ tık desteği
                 div.oncontextmenu = (e) => { e.preventDefault(); openItemOptions(item); }; 
 
                 shortcutGrid.appendChild(div);
             }); 
 
+            // Ekleme Butonu (+) Ana Ekranda Her Zaman Görünür
             let addDiv = document.createElement('div');
             addDiv.className = 'shortcut-item';
             addDiv.innerHTML = `<div class="shortcut-icon" style="color:var(--primary); font-size:30px;">+</div><div class="shortcut-name">Ekle</div>`;
@@ -334,7 +340,8 @@
                     if (!url.startsWith('http')) url = 'https://' + url;
                 }
                 shortcuts.push({ id: Date.now().toString(), type, name, url, parentId: currentFolderId });
-                saveShortcuts(); showToast("Eklendi");
+                saveShortcuts();
+                showToast("Eklendi");
             }, 350);
         } 
 
@@ -376,18 +383,22 @@
 
         function executeMove(targetFolderId) {
             selectedItemForAction.parentId = targetFolderId;
-            saveShortcuts(); closeActionSheet(); showToast("Taşındı");
+            saveShortcuts();
+            closeActionSheet();
+            showToast("Taşındı");
         } 
 
         function deleteItem() {
             closeActionSheet();
             setTimeout(() => {
                 if (confirm(`"${selectedItemForAction.name}" silinsin mi?`)) {
+                    // Eğer klasörse içindekileri de sil
                     if (selectedItemForAction.type === 'folder') {
                         shortcuts = shortcuts.filter(s => s.parentId !== selectedItemForAction.id);
                     }
                     shortcuts = shortcuts.filter(s => s.id !== selectedItemForAction.id);
-                    saveShortcuts(); showToast("Silindi");
+                    saveShortcuts();
+                    showToast("Silindi");
                 }
             }, 350);
         } 
@@ -414,35 +425,15 @@
             });
         } 
 
-        // ==== YENİ NATIVE JAVA BAĞLANTILARI ====
-        window.updateUrlBar = function(newUrl) {
-            urlInput.value = newUrl;
-            const t = tabs.find(t => t.id === activeTabId);
-            if(t) { t.url = newUrl; t.title = newUrl.split('/')[2] || newUrl; }
-        };
-
-        window.showHome = function() {
-            homeContent.style.display = 'flex';
-            currentFolderId = 'root'; 
-            renderShortcuts();
-            urlInput.value = '';
-            const t = tabs.find(t => t.id === activeTabId);
-            if(t) { t.url = ''; t.title = 'Yeni Sekme'; }
-        };
-
         function loadUrl(inputUrl) {
             if(!inputUrl) return;
             let finalUrl = inputUrl.trim();
             if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
-                finalUrl = (finalUrl.includes('.') && !finalUrl.includes(' ')) ? 'https://' + finalUrl : 'https://www.google.com/search?q=' + encodeURIComponent(finalUrl });
+                finalUrl = (finalUrl.includes('.') && !finalUrl.includes(' ')) ? 'https://' + finalUrl : 'https://www.google.com/search?q=' + encodeURIComponent(finalUrl);
             }
             urlInput.value = finalUrl;
             homeContent.style.display = 'none'; webviewContainer.style.display = 'flex';
-            
-            if (window.Capacitor && window.Capacitor.Plugins.BroxEngine) {
-                window.Capacitor.Plugins.BroxEngine.loadUrl({ url: (finalUrl });
-            }
-            
+            webview.src = finalUrl;
             const t = tabs.find(t => t.id === activeTabId);
             if(t) { t.url = finalUrl; t.title = finalUrl.split('/')[2] || finalUrl; }
         } 
@@ -464,11 +455,9 @@
             else document.body.classList.remove('incognito'); 
 
             if(tab.url) {
-                homeContent.style.display = 'none'; webviewContainer.style.display = 'flex'; 
-                if (window.BroxNative) window.Capacitor.Plugins.BroxEngine.loadUrl({ url: (tab.url });
+                homeContent.style.display = 'none'; webviewContainer.style.display = 'flex'; webview.src = tab.url;
             } else {
-                if (window.Capacitor && window.Capacitor.Plugins.BroxEngine) window.Capacitor.Plugins.BroxEngine.hideWebView();
-                webviewContainer.style.display = 'none'; homeContent.style.display = 'flex';
+                webview.src = ''; webviewContainer.style.display = 'none'; homeContent.style.display = 'flex';
                 currentFolderId = 'root'; renderShortcuts();
             }
             tabsModal.style.display = 'none';
@@ -489,11 +478,7 @@
         urlInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { urlInput.blur(); loadUrl(urlInput.value); } });
         document.getElementById('home-btn').addEventListener('click', () => {
             if(savedHomepage) loadUrl(savedHomepage);
-            else { 
-                urlInput.value = ''; 
-                if (window.Capacitor && window.Capacitor.Plugins.BroxEngine) window.Capacitor.Plugins.BroxEngine.hideWebView();
-                webviewContainer.style.display = 'none'; homeContent.style.display = 'flex'; currentFolderId = 'root'; renderShortcuts(); const t = tabs.find(t => t.id === activeTabId); if(t) { t.url = ''; t.title = t.incognito ? 'Gizli Sekme' : 'Yeni Sekme'; } 
-            }
+            else { urlInput.value = ''; webview.src = ''; webviewContainer.style.display = 'none'; homeContent.style.display = 'flex'; currentFolderId = 'root'; renderShortcuts(); const t = tabs.find(t => t.id === activeTabId); if(t) { t.url = ''; t.title = t.incognito ? 'Gizli Sekme' : 'Yeni Sekme'; } }
         }); 
 
         // ==== MENÜ VE BOŞLUĞA TIKLAMA YÖNETİMİ DÜZELTİLDİ ====
@@ -528,7 +513,7 @@
 
         document.getElementById('menu-add-shortcut').addEventListener('click', () => {
             dropdownMenu.style.display = 'none';
-            if(urlInput.value && webviewContainer.style.display !== 'none') {
+            if(webview.src && webviewContainer.style.display !== 'none') {
                 let siteName = prompt("Bu siteyi kısayol olarak kaydet:", urlInput.value.split('/')[2]);
                 if(siteName) {
                     shortcuts.push({ id: Date.now().toString(), type: 'link', name: siteName, url: urlInput.value, parentId: 'root' });
@@ -538,8 +523,7 @@
         }); 
 
         document.getElementById('menu-refresh').addEventListener('click', () => {
-            if (window.Capacitor && window.Capacitor.Plugins.BroxEngine) window.Capacitor.Plugins.BroxEngine.reload();
-            dropdownMenu.style.display = 'none'; showToast("Sayfa yenileniyor...");
+            if(webview.src) webview.src = webview.src; dropdownMenu.style.display = 'none'; showToast("Sayfa yenileniyor...");
         }); 
 
         document.getElementById('menu-share').addEventListener('click', async () => {
@@ -550,10 +534,7 @@
 
         document.getElementById('menu-translate').addEventListener('click', () => {
             dropdownMenu.style.display = 'none';
-            if(urlInput.value) { 
-                if (window.BroxNative) window.Capacitor.Plugins.BroxEngine.loadUrl({ url: (`https://translate.google.com/translate?sl=auto`https://translate.google.com/translate?sl=auto&tl=tr&u=${encodeURIComponent(urlInput.value)}`);tl=tr`https://translate.google.com/translate?sl=auto&tl=tr&u=${encodeURIComponent(urlInput.value)}`);u=${encodeURIComponent(urlInput.value)}` });
-                showToast("Sayfa çevriliyor..."); 
-            } 
+            if(urlInput.value) { webview.src = `https://translate.google.com/translate?sl=auto&tl=tr&u=${encodeURIComponent(urlInput.value)}`; showToast("Sayfa çevriliyor..."); } 
             else showToast("Çevrilecek sayfa yok.");
         }); 
 
@@ -570,14 +551,7 @@
         let startY = 0; let isPulling = false; const ptr = document.getElementById('pull-to-refresh'); const refreshIcon = ptr.querySelector('.refresh-icon');
         document.addEventListener('touchstart', (e) => { if (webviewContainer.style.display !== 'none' && e.touches[0].clientY <= 80) { startY = e.touches[0].clientY; isPulling = true; ptr.style.transition = 'none'; } }, {passive: true});
         document.addEventListener('touchmove', (e) => { if (!isPulling) return; const pullDistance = e.touches[0].clientY - startY; if (pullDistance > 0 && pullDistance < 150) { ptr.style.top = `${pullDistance - 50}px`; refreshIcon.style.transform = `rotate(${pullDistance * 2.5}deg)`; } }, {passive: true});
-        document.addEventListener('touchend', (e) => { 
-            if (!isPulling) return; isPulling = false; ptr.style.transition = 'top 0.3s ease-out'; 
-            if (e.changedTouches[0].clientY - startY > 80) { 
-                ptr.style.top = '20px'; refreshIcon.classList.add('spinning'); 
-                if (window.Capacitor && window.Capacitor.Plugins.BroxEngine) window.Capacitor.Plugins.BroxEngine.reload(); 
-                setTimeout(() => { ptr.style.top = '-50px'; refreshIcon.classList.remove('spinning'); showToast("Sayfa yenilendi"); }, 1000); 
-            } else { ptr.style.top = '-50px'; } 
-        }); 
+        document.addEventListener('touchend', (e) => { if (!isPulling) return; isPulling = false; ptr.style.transition = 'top 0.3s ease-out'; if (e.changedTouches[0].clientY - startY > 80) { ptr.style.top = '20px'; refreshIcon.classList.add('spinning'); if (webview.src) webview.src = webview.src; setTimeout(() => { ptr.style.top = '-50px'; refreshIcon.classList.remove('spinning'); showToast("Sayfa yenilendi"); }, 1000); } else { ptr.style.top = '-50px'; } }); 
 
         switchTab(1);
     </script>

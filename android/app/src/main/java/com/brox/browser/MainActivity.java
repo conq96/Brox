@@ -1,28 +1,40 @@
 package com.brox.browser;
 
 import android.os.Bundle;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.CookieManager;
 import com.getcapacitor.BridgeActivity;
-import com.brox.browser.plugins.BroxEnginePlugin;
 
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        registerPlugin(BroxEnginePlugin.class);
         super.onCreate(savedInstanceState);
-    }
 
-    @Override
-    public void onBackPressed() {
-        BroxEnginePlugin broxEngine = (BroxEnginePlugin) this.bridge.getPlugin("BroxEngine").getInstance();
-        if (broxEngine != null && broxEngine.isVisible()) {
-            if (broxEngine.canGoBack()) {
-                broxEngine.goBack();
-            } else {
-                broxEngine.hideWebView(null);
-                this.bridge.getWebView().evaluateJavascript("if(window.showHome) window.showHome();", null);
-            }
-        } else {
-            super.onBackPressed();
+        WebView webView = this.bridge.getWebView();
+        if (webView != null) {
+            WebSettings settings = webView.getSettings();
+            
+            // Tüm güvenlik engellerini kaldıran ve tam profesyonel tarayıcı yeteneği veren ayarlar
+            settings.setJavaScriptEnabled(true);
+            settings.setDomStorageEnabled(true);
+            settings.setDatabaseEnabled(true);
+            settings.setAllowFileAccess(true);
+            settings.setAllowContentAccess(true);
+            settings.setMediaPlaybackRequiresUserGesture(false);
+            settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+            settings.setJavaScriptCanOpenWindowsAutomatically(true);
+            settings.setSupportMultipleWindows(true);
+            
+            // Üçüncü taraf çerezlere izin ver (Google/YouTube girişleri için şarttır)
+            CookieManager cookieManager = CookieManager.getInstance();
+            cookieManager.setAcceptCookie(true);
+            cookieManager.setAcceptThirdPartyCookies(webView, true);
+
+            // X-Frame-Options kısıtlamalarını bypass etmek için standart masaüstü/mobil Chrome kimliği
+            String userAgent = settings.getUserAgentString();
+            userAgent = userAgent.replace("; wv", ""); // WebView ibaresini sil
+            settings.setUserAgentString(userAgent);
         }
     }
 }
