@@ -6,15 +6,21 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/conq96/Brox.git"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
-  "dependencies": {
-    "@capacitor/core": "^8.5.3"
+  "bugs": {
+    "url": "https://github.com/conq96/Brox/issues"
   },
-  "devDependencies": {
+  "homepage": "https://github.com/conq96/Brox#readme",
+  "dependencies": {
     "@capacitor/android": "^8.5.3",
-    "@capacitor/cli": "^8.5.3"
+    "@capacitor/cli": "^8.5.3",
+    "@capacitor/core": "^8.5.3"
   }
 }

@@ -1,14 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace = "com.conq96.brox"
+    namespace = "com.brox.browser"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        ndk {
-            abiFilters 'arm64-v8a'
-        }
-        ndk { abiFilters 'arm64-v8a' }
-        applicationId "com.conq96.brox"
+        applicationId "com.brox.browser"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
@@ -56,5 +52,3 @@ try {
 } catch(Exception e) {
     logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
 }
-android { aaptOptions { additionalParameters "--no-version-vectors" } }
-android { configurations.all { resolutionStrategy { force "com.android.tools.build:aapt2:8.1.1-11204867" } } }
