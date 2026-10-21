@@ -39,12 +39,10 @@ public class MainActivity extends BridgeActivity {
                         settings.setJavaScriptCanOpenWindowsAutomatically(true);
                         settings.setSupportMultipleWindows(true);
 
-                        // Çerez yönetimi (Oturum açma ve hesaplar için)
                         CookieManager cookieManager = CookieManager.getInstance();
                         cookieManager.setAcceptCookie(true);
                         cookieManager.setAcceptThirdPartyCookies(nativeBrowser, true);
 
-                        // WebView engellerini kaldıran User-Agent ayarı
                         String ua = settings.getUserAgentString().replace("; wv", "");
                         settings.setUserAgentString(ua);
 
@@ -54,25 +52,52 @@ public class MainActivity extends BridgeActivity {
                                 view.loadUrl(url);
                                 return true;
                             }
+                            @Override
+                            public void onPageFinished(WebView view, String url) {
+                                capacitorWebView.evaluateJavascript("if(window.updateAddressBar) window.updateAddressBar('" + url + "');", null);
+                            }
                         });
                         nativeBrowser.setWebChromeClient(new WebChromeClient());
 
-                        // Tam ekran tarayıcı motoru
+                        float density = getResources().getDisplayMetrics().density;
+                        int marginTop = (int)(56 * density);
                         FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
                             ViewGroup.LayoutParams.MATCH_PARENT,
                             ViewGroup.LayoutParams.MATCH_PARENT
                         );
-                        
+                        params.topMargin = marginTop;
+
                         ((ViewGroup) capacitorWebView.getParent()).addView(nativeBrowser, params);
                     }
                     nativeBrowser.setVisibility(View.VISIBLE);
                     nativeBrowser.loadUrl(url);
                 });
             }
+
+            @JavascriptInterface
+            public void hideWebView() {
+                runOnUiThread(() -> {
+                    if (nativeBrowser != null) {
+                        nativeBrowser.setVisibility(View.GONE);
+                        nativeBrowser.loadUrl("about:blank");
+                    }
+                });
+            }
+
+            @JavascriptInterface
+            public void goBack() {
+                runOnUiThread(() -> {
+                    if (nativeBrowser != null && nativeBrowser.canGoBack()) {
+                        nativeBrowser.goBack();
+                    } else {
+                        hideWebView();
+                        bridge.getWebView().evaluateJavascript("if(window.resetBrowser) window.resetBrowser();", null);
+                    }
+                });
+            }
         }, "BroxNative");
     }
 
-    // Telefonda geri tuşuna basıldığında sitede geri git, ana sayfadaysa uygulamadan çık
     @Override
     public void onBackPressed() {
         if (nativeBrowser != null && nativeBrowser.getVisibility() == View.VISIBLE) {
