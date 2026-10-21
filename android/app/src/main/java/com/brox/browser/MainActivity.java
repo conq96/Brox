@@ -95,6 +95,15 @@ public class MainActivity extends BridgeActivity {
                     }
                 });
             }
+
+            @JavascriptInterface
+            public void reload() {
+                runOnUiThread(() -> {
+                    if (nativeBrowser != null && nativeBrowser.getVisibility() == View.VISIBLE) {
+                        nativeBrowser.reload();
+                    }
+                });
+            }
         }, "BroxNative");
     }
 

@@ -6,9 +6,13 @@
     <title>Brox Browser</title>
     <style>
         :root {
-            --bg-base: #000000; --bg-surface: #1C1C1E; --bg-hover: #2C2C2E;
-            --text-main: #F2F2F7; --text-muted: #8E8E93; --primary: #0A84FF;
-            --border: #38383A; --incognito: #181124; --danger: #FF453A;
+            --bg-base: #000000; 
+            --bg-surface: #1C1C1E; 
+            --bg-hover: #2C2C2E;
+            --text-main: #E5E5EA; 
+            --text-muted: #8E8E93; 
+            --border: #38383A; 
+            --incognito: #121019;
         } 
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -16,49 +20,70 @@
 
         /* Toolbar */
         #toolbar {
-            display: flex; align-items: center; padding: 0 12px; height: 56px; gap: 10px;
-            background-color: var(--bg-base); border-bottom: 1px solid var(--border); z-index: 10;
+            display: flex; align-items: center; padding: 0 12px; height: 56px; gap: 8px;
+            background-color: var(--bg-base); border-bottom: 1px solid var(--border); z-index: 20;
         }
-        
-        /* Geri Tuşu (Site içindeyken görünür) */
-        #back-btn { display: none; background: var(--bg-surface); color: var(--primary); border: 1px solid var(--border); padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; }
+        body.incognito #toolbar { background-color: var(--incognito); }
+
+        #back-btn { display: none; background: var(--bg-surface); color: var(--text-main); border: 1px solid var(--border); padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; }
 
         .input-container {
-            display: flex; flex-grow: 1; align-items: center; background-color: var(--bg-surface); border-radius: 12px; padding: 0 16px; height: 40px;
+            display: flex; flex-grow: 1; align-items: center; background-color: var(--bg-surface); border: 1px solid var(--border); border-radius: 10px; padding: 0 14px; height: 40px;
         }
-        #url-input { flex-grow: 1; background: transparent; border: none; color: var(--text-main); font-size: 16px; outline: none; width: 100%; -webkit-user-select: auto; user-select: auto; }
-        
+        #url-input { flex-grow: 1; background: transparent; border: none; color: var(--text-main); font-size: 15px; outline: none; width: 100%; -webkit-user-select: auto; user-select: auto; }
+        #url-input::placeholder { color: var(--text-muted); }
+
+        #search-btn {
+            background-color: var(--bg-surface); color: var(--text-main); border: 1px solid var(--border); padding: 0 16px; height: 40px; border-radius: 10px; font-size: 14px; font-weight: 500; cursor: pointer; transition: 0.2s;
+        }
+        #search-btn:hover { background-color: var(--bg-hover); }
+
         .icon-btn { background: none; border: none; color: var(--text-main); display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; cursor: pointer; border-radius: 10px; }
         .icon-btn:hover { background-color: var(--bg-hover); }
-        .icon-btn svg { width: 22px; height: 22px; stroke-width: 2; } 
+        .icon-btn svg { width: 20px; height: 20px; stroke-width: 1.8; stroke: var(--text-muted); } 
 
-        #tab-counter-btn { border: 2px solid var(--text-main); border-radius: 8px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: bold; margin: 0 4px; cursor: pointer; } 
+        #tab-counter-btn { border: 2px solid var(--text-muted); border-radius: 8px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: var(--text-muted); cursor: pointer; } 
 
-        /* Ana Sayfa İçeriği & Kısayollar */
+        /* Üç Nokta Açılır Menü (Gönderdiğin görseldeki minimalist gri/siyah stil) */
+        #dropdown-menu {
+            display: none; position: absolute; top: 60px; right: 12px; background-color: var(--bg-surface); 
+            border: 1px solid var(--border); border-radius: 14px; flex-direction: column; width: 240px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-Index: 50; padding: 6px 0;
+        }
+        .menu-item {
+            padding: 12px 16px; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 14px; font-size: 14px;
+            background: none; border: none; width: 100%; text-align: left; transition: 0.15s;
+        }
+        .menu-item:hover { background-color: var(--bg-hover); color: var(--text-main); }
+        .menu-item svg { width: 18px; height: 18px; stroke: var(--text-muted); stroke-width: 1.8; fill: none; }
+        .menu-item:hover svg { stroke: var(--text-main); }
+        .menu-divider { height: 1px; background-color: var(--border); margin: 4px 0; }
+
+        /* Ana Sayfa Kısayolları */
         #home-content { flex-grow: 1; padding: 25px; overflow-y: auto; display: flex; flex-direction: column; background: var(--bg-base); }
-        .shortcuts-title { font-size: 14px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 20px; }
+        .shortcuts-title { font-size: 13px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 20px; }
         .shortcut-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)); gap: 20px; }
         .shortcut-item { display: flex; flex-direction: column; align-items: center; cursor: pointer; }
-        .shortcut-icon { width: 60px; height: 60px; background-color: var(--bg-surface); border: 1px solid var(--border); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: bold; color: var(--text-main); transition: 0.2s; }
-        .shortcut-item:hover .shortcut-icon { border-color: var(--primary); }
-        .shortcut-name { margin-top: 8px; font-size: 12px; color: var(--text-main); width: 100%; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } 
+        .shortcut-icon { width: 56px; height: 56px; background-color: var(--bg-surface); border: 1px solid var(--border); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: bold; color: var(--text-muted); transition: 0.2s; }
+        .shortcut-item:hover .shortcut-icon { border-color: var(--text-main); color: var(--text-main); }
+        .shortcut-name { margin-top: 8px; font-size: 12px; color: var(--text-muted); width: 100%; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } 
 
         /* Pull to Refresh */
-        #pull-to-refresh { position: absolute; top: -50px; left: 50%; transform: translateX(-50%); width: 40px; height: 40px; background-color: var(--bg-surface); border: 1px solid var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 15; transition: top 0.2s; pointer-events: none; }
-        .refresh-icon { font-size: 20px; color: var(--text-main); }
+        #pull-to-refresh { position: absolute; top: -50px; left: 50%; transform: translateX(-50%); width: 36px; height: 36px; background-color: var(--bg-surface); border: 1px solid var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 15; transition: top 0.2s; pointer-events: none; }
+        .refresh-icon { font-size: 18px; color: var(--text-muted); }
         @keyframes spin { 100% { transform: rotate(360deg); } }
         .spinning { animation: spin 1s linear infinite; } 
 
         /* Sekme Modalı */
-        #tabs-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.85); z-index: 40; backdrop-filter: blur(10px); flex-direction: column; padding: 20px; box-sizing: border-box; }
-        .tabs-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; font-size: 20px; font-weight: bold; }
-        .tab-grid { display: flex; flex-wrap: wrap; gap: 15px; overflow-y: auto; }
-        .tab-card { background-color: var(--bg-surface); border: 2px solid var(--border); border-radius: 12px; width: calc(50% - 8px); height: 140px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; position: relative; }
-        .tab-card.active { border-color: var(--primary); }
-        .tab-card span { font-size: 14px; text-align: center; padding: 10px; word-break: break-all; }
-        .close-tab-btn { position: absolute; top: 5px; right: 5px; background: rgba(255,0,0,0.2); border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+        #tabs-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.85); z-index: 60; backdrop-filter: blur(10px); flex-direction: column; padding: 20px; box-sizing: border-box; }
+        .tabs-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; font-size: 18px; font-weight: 500; color: var(--text-main); }
+        .tab-grid { display: flex; flex-wrap: wrap; gap: 12px; overflow-y: auto; }
+        .tab-card { background-color: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px; width: calc(50% - 6px); height: 130px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; position: relative; }
+        .tab-card.active { border-color: var(--text-main); }
+        .tab-card span { font-size: 13px; text-align: center; padding: 10px; word-break: break-all; color: var(--text-muted); }
+        .close-tab-btn { position: absolute; top: 6px; right: 6px; background: var(--bg-hover); color: var(--text-muted); border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 11px; }
 
-        #toast { visibility: hidden; min-width: 220px; background-color: var(--bg-hover); color: var(--text-main); text-align: center; border-radius: 20px; padding: 10px; position: fixed; z-index: 100; left: 50%; bottom: 40px; transform: translateX(-50%); font-size: 14px; opacity: 0; transition: opacity 0.3s; }
+        #toast { visibility: hidden; min-width: 200px; background-color: var(--bg-surface); border: 1px solid var(--border); color: var(--text-main); text-align: center; border-radius: 12px; padding: 10px 16px; position: fixed; z-index: 100; left: 50%; bottom: 30px; transform: translateX(-50%); font-size: 13px; opacity: 0; transition: opacity 0.3s; }
         #toast.show { visibility: visible; opacity: 1; }
     </style>
 </head>
@@ -67,19 +92,54 @@
     <div id="toolbar">
         <button id="back-btn" title="Geri">⬅ Geri</button>
         <button class="icon-btn" id="home-btn" title="Ana Sayfa">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            <svg viewBox="0 0 24 24" fill="none"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
         </button>
         <div class="input-container">
-            <input type="url" id="url-input" placeholder="Google, YouTube veya URL yazın...">
+            <input type="url" id="url-input" placeholder="Arama yapın veya URL girin...">
         </div>
+        <button id="search-btn">Ara</button>
         <button class="icon-btn" id="add-tab-btn" title="Yeni Sekme">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            <svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
         </button>
         <div id="tab-counter-btn" title="Sekmeler">1</div>
+        <button class="icon-btn" id="menu-btn" title="Menü">
+            <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
+        </button>
+    </div> 
+
+    <!-- Üç Nokta Seçenekler Menüsü -->
+    <div id="dropdown-menu">
+        <button class="menu-item" id="m-refresh">
+            <svg viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.59-9.21l5.67-1.36"></path></svg> Sayfayı Yenile
+        </button>
+        <button class="menu-item" id="m-share">
+            <svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13"></path></svg> Paylaş
+        </button>
+        <button class="menu-item" id="m-save">
+            <svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg> Sayfayı Kaydet
+        </button>
+        <div class="menu-divider"></div>
+        <button class="menu-item" id="m-newtab">
+            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> Yeni Sekme
+        </button>
+        <button class="menu-item" id="m-incognito">
+            <svg viewBox="0 0 24 24"><path d="M2 12h20M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M15 4l-3 4-3-4"></path></svg> Yeni Gizli Sekme
+        </button>
+        <div class="menu-divider"></div>
+        <button class="menu-item" id="m-history">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Geçmiş
+        </button>
+        <button class="menu-item" id="m-downloads">
+            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"></path></svg> İndirilenler
+        </button>
+        <div class="menu-divider"></div>
+        <button class="menu-item" id="m-settings">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg> Ayarlar
+        </button>
     </div> 
 
     <div id="tabs-modal">
-        <div class="tabs-header">Açık Sekmeler <span id="close-tabs-modal" style="cursor:pointer; font-size:24px;">×</span></div>
+        <div class="tabs-header">Açık Sekmeler <span id="close-tabs-modal" style="cursor:pointer; font-size:22px; color:var(--text-muted);">×</span></div>
         <div class="tab-grid" id="tab-grid-container"></div>
     </div> 
 
@@ -94,10 +154,13 @@
 
     <script>
         const urlInput = document.getElementById('url-input');
+        const searchBtn = document.getElementById('search-btn');
         const homeContent = document.getElementById('home-content');
         const backBtn = document.getElementById('back-btn');
         const addTabBtn = document.getElementById('add-tab-btn');
         const tabCounterBtn = document.getElementById('tab-counter-btn');
+        const menuBtn = document.getElementById('menu-btn');
+        const dropdownMenu = document.getElementById('dropdown-menu');
         const tabsModal = document.getElementById('tabs-modal');
         const shortcutGrid = document.getElementById('shortcut-grid');
 
@@ -106,7 +169,6 @@
             t.classList.add("show"); setTimeout(() => t.classList.remove("show"), 2500);
         } 
 
-        // Kısayollar Sistemi
         let shortcuts = JSON.parse(localStorage.getItem('brox_shortcuts')) || [
             { name: "Google", url: "https://www.google.com" },
             { name: "YouTube", url: "https://www.youtube.com" },
@@ -122,14 +184,13 @@
                 div.onclick = () => loadUrl(item.url);
                 shortcutGrid.appendChild(div);
             });
-            // Ekle Butonu
             let addDiv = document.createElement('div');
             addDiv.className = 'shortcut-item';
-            addDiv.innerHTML = `<div class="shortcut-icon" style="color:var(--primary); font-size:30px;">+</div><div class="shortcut-name">Ekle</div>`;
+            addDiv.innerHTML = `<div class="shortcut-icon" style="font-size:26px;">+</div><div class="shortcut-name">Ekle</div>`;
             addDiv.onclick = () => {
-                let name = prompt("Kısayol Adı (Örn: X):");
+                let name = prompt("Kısayol Adı:");
                 if (!name) return;
-                let url = prompt("URL (Örn: x.com):");
+                let url = prompt("URL (Örn: site.com):");
                 if (!url) return;
                 if (!url.startsWith('http')) url = 'https://' + url;
                 shortcuts.push({ name, url });
@@ -140,8 +201,7 @@
             shortcutGrid.appendChild(addDiv);
         }
 
-        // Sekme Yönetimi
-        let tabs = [{ id: 1, url: '', title: 'Yeni Sekme' }];
+        let tabs = [{ id: 1, url: '', title: 'Yeni Sekme', incognito: false }];
         let activeTabId = 1;
 
         function renderTabs() {
@@ -151,7 +211,7 @@
             tabs.forEach(tab => {
                 const card = document.createElement('div');
                 card.className = `tab-card ${tab.id === activeTabId ? 'active' : ''}`;
-                card.innerHTML = `<span>${tab.title}</span><div class="close-tab-btn" onclick="event.stopPropagation(); closeTab(${tab.id})">✖</div>`;
+                card.innerHTML = `<span>${tab.title} ${tab.incognito ? '🕵️' : ''}</span><div class="close-tab-btn" onclick="event.stopPropagation(); closeTab(${tab.id})">✖</div>`;
                 card.onclick = () => switchTab(tab.id);
                 container.appendChild(card);
             });
@@ -189,12 +249,12 @@
             urlInput.value = '';
             renderShortcuts();
             const t = tabs.find(t => t.id === activeTabId);
-            if(t) { t.url = ''; t.title = 'Yeni Sekme'; }
+            if(t) { t.url = ''; t.title = t.incognito ? 'Gizli Sekme' : 'Yeni Sekme'; }
         };
 
-        function createNewTab() {
+        function createNewTab(isIncognito = false) {
             const newId = Date.now();
-            tabs.push({ id: newId, url: '', title: 'Yeni Sekme' });
+            tabs.push({ id: newId, url: '', title: isIncognito ? 'Gizli Sekme' : 'Yeni Sekme', incognito: isIncognito });
             switchTab(newId);
         }
 
@@ -204,6 +264,10 @@
             urlInput.value = tab.url;
             tabsModal.style.display = 'none';
             renderTabs();
+            
+            if(tab.incognito) document.body.classList.add('incognito');
+            else document.body.classList.remove('incognito');
+
             if(tab.url) {
                 loadUrl(tab.url);
             } else {
@@ -219,21 +283,34 @@
             renderTabs();
         }
 
-        addTabBtn.onclick = () => createNewTab();
+        // Menü butonları olayları
+        menuBtn.onclick = (e) => { e.stopPropagation(); dropdownMenu.style.display = dropdownMenu.style.display === 'flex' ? 'none' : 'flex'; };
+        document.onclick = () => { dropdownMenu.style.display = 'none'; };
+        dropdownMenu.onclick = (e) => { e.stopPropagation(); };
+
+        document.getElementById('m-refresh').onclick = () => { dropdownMenu.style.display = 'none'; if (window.BroxNative) window.BroxNative.reload(); showToast("Sayfa yenileniyor"); };
+        document.getElementById('m-share').onclick = async () => { dropdownMenu.style.display = 'none'; if (navigator.share && urlInput.value) { try { await navigator.share({ url: urlInput.value }); } catch(e){} } else showToast("Paylaşılabilecek sayfa yok"); };
+        document.getElementById('m-save').onclick = () => { dropdownMenu.style.display = 'none'; showToast("Sayfa yer işaretlerine kaydedildi"); };
+        document.getElementById('m-newtab').onclick = () => { dropdownMenu.style.display = 'none'; createNewTab(false); };
+        document.getElementById('m-incognito').onclick = () => { dropdownMenu.style.display = 'none'; createNewTab(true); showToast("Gizli sekme açıldı"); };
+        document.getElementById('m-history').onclick = () => { dropdownMenu.style.display = 'none'; showToast("Geçmiş yakında eklenecek"); };
+        document.getElementById('m-downloads').onclick = () => { dropdownMenu.style.display = 'none'; showToast("İndirilenler boş"); };
+        document.getElementById('m-settings').onclick = () => { dropdownMenu.style.display = 'none'; showToast("Ayarlar"); };
+
+        searchBtn.onclick = () => { urlInput.blur(); loadUrl(urlInput.value); };
+        urlInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { urlInput.blur(); loadUrl(urlInput.value); } });
+        
+        addTabBtn.onclick = () => createNewTab(false);
         tabCounterBtn.onclick = () => { tabsModal.style.display = 'flex'; renderTabs(); };
         document.getElementById('close-tabs-modal').onclick = () => { tabsModal.style.display = 'none'; };
 
-        urlInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { urlInput.blur(); loadUrl(urlInput.value); } });
-        
         document.getElementById('home-btn').onclick = () => {
             if (window.BroxNative && window.BroxNative.hideWebView) window.BroxNative.hideWebView();
             window.resetBrowser();
         };
 
         backBtn.onclick = () => {
-            if (window.BroxNative && window.BroxNative.goBack) {
-                window.BroxNative.goBack();
-            }
+            if (window.BroxNative && window.BroxNative.goBack) window.BroxNative.goBack();
         };
 
         renderShortcuts();
