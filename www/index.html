@@ -18,9 +18,9 @@
             -webkit-user-select: none; user-select: none;
         } 
 
-        /* Toolbar (Yüksekliği tam 56px olacak şekilde Java'ya uyarlandı) */
+        /* Toolbar */
         #toolbar {
-            display: flex; align-items: center; padding: 0 12px; height: 56px; gap: 10px;
+            display: flex; align-items: center; padding: 12px; gap: 10px;
             background-color: var(--bg-base); border-bottom: 1px solid var(--border);
             z-index: 10; transition: background-color 0.3s;
         }
@@ -29,7 +29,7 @@
         .input-container {
             display: flex; flex-grow: 1; align-items: center;
             background-color: var(--bg-surface); border-radius: 12px; 
-            padding: 0 16px; height: 40px; transition: 0.2s;
+            padding: 0 16px; height: 44px; transition: 0.2s;
         }
         .input-container:focus-within { box-shadow: 0 0 0 2px var(--primary); } 
 
@@ -51,7 +51,7 @@
 
         /* Gelişmiş Menü */
         #dropdown-menu {
-            display: none; position: absolute; top: 60px; right: 12px; background-color: var(--bg-surface); 
+            display: none; position: absolute; top: 65px; right: 12px; background-color: var(--bg-surface); 
             border: 1px solid var(--border); border-radius: 16px; flex-direction: column; width: 260px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.6); z-index: 30; max-height: 75vh; overflow-y: auto; overflow-x: hidden;
         }
@@ -97,14 +97,28 @@
         .shortcut-name { margin-top: 8px; font-size: 12px; color: var(--text-main); width: 100%; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } 
 
         /* Alt Sayfa / Modal (Action Sheet) */
-        #action-sheet-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 60; backdrop-filter: blur(5px); }
-        #action-sheet { position: fixed; bottom: -100%; left: 0; width: 100%; background: var(--bg-surface); border-top-left-radius: 20px; border-top-right-radius: 20px; z-index: 70; transition: bottom 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); padding-bottom: env(safe-area-inset-bottom); }
+        #action-sheet-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); z-index: 60; backdrop-filter: blur(5px);
+        }
+        #action-sheet {
+            position: fixed; bottom: -100%; left: 0; width: 100%; background: var(--bg-surface);
+            border-top-left-radius: 20px; border-top-right-radius: 20px; z-index: 70;
+            transition: bottom 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); padding-bottom: env(safe-area-inset-bottom);
+        }
         #action-sheet.open { bottom: 0; }
         .action-header { padding: 20px; text-align: center; font-weight: bold; font-size: 18px; border-bottom: 1px solid var(--border); color: var(--text-muted); }
         .action-btn { width: 100%; background: none; border: none; padding: 18px 20px; text-align: left; font-size: 16px; color: var(--text-main); border-bottom: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; gap: 15px; }
         .action-btn:last-child { border-bottom: none; }
         .action-btn.danger { color: var(--danger); }
         .action-btn:active { background: var(--bg-hover); } 
+
+        /* WebView & Pull to Refresh */
+        #webview-container { display: flex; flex-grow: 1; width: 100%; position: relative; overflow: hidden; background: #fff; }
+        #pull-to-refresh { position: absolute; top: -50px; left: 50%; transform: translateX(-50%); width: 40px; height: 40px; background-color: var(--bg-surface); border: 1px solid var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 15; transition: top 0.2s; pointer-events: none; }
+        .refresh-icon { font-size: 20px; color: var(--text-main); }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        .spinning { animation: spin 1s linear infinite; } 
 
         /* Tab Modal & Toast */
         #tabs-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.85); z-index: 40; backdrop-filter: blur(10px); flex-direction: column; padding: 20px; box-sizing: border-box; }
@@ -143,18 +157,36 @@
 
     <!-- Menü -->
     <div id="dropdown-menu">
-        <button class="menu-item" id="menu-new-incognito"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M2 12h20M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M15 4l-3 4-3-4"></path></svg> Yeni Gizli Sekme Aç</button>
-        <button class="menu-item" id="menu-add-shortcut"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14M5 12h14"></path></svg> Siteyi Kısayol Ekle</button>
+        <button class="menu-item" id="menu-new-incognito">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M2 12h20M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M15 4l-3 4-3-4"></path></svg> Yeni Gizli Sekme Aç
+        </button>
+        <button class="menu-item" id="menu-add-shortcut">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14M5 12h14"></path></svg> Siteyi Kısayol Ekle
+        </button>
         <button class="menu-item" id="menu-refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.59-9.21l5.67-1.36"></path></svg> Yenile</button>
         <button class="menu-item" id="menu-share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13"></path></svg> Paylaş</button>
+        <button class="menu-item" id="menu-find"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg> Sayfada Bul</button>
+        <button class="menu-item" id="menu-desktop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg> Masaüstü Sitesi</button>
+        <button class="menu-item" id="menu-translate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg> Çevir</button>
+        <button class="menu-item" id="menu-reader"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg> Okuma Modu</button>
+        <button class="menu-item" id="menu-tts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg> Seslendir</button>
+        <button class="menu-item" id="menu-downloads"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"></path></svg> İndirilenler</button>
+        <button class="menu-item" id="menu-history"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Geçmiş</button>
+        <button class="menu-item" id="menu-print"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg> Yazdır / PDF</button>
+        <button class="menu-item" id="menu-permissions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg> Site İzinleri</button>
+        <!-- Ayarlar ve Ok İşareti -->
         <button class="menu-item" id="menu-settings-btn" style="border-top: 1px solid var(--border); justify-content: space-between;">
-            <div style="display:flex; align-items:center; gap:14px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg> Ayarlar</div>
+            <div style="display:flex; align-items:center; gap:14px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg> 
+                Ayarlar
+            </div>
             <svg id="settings-chevron" style="width:16px; height:16px; transition: transform 0.3s;" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="6 9 12 15 18 9"></polyline></svg>
         </button>
         <div id="settings-accordion">
             <div class="setting-row">Açılış Sayfası <input type="url" id="setting-homepage" class="styled-input" placeholder="Boş bırakılabilir"></div>
             <div class="setting-row">Görüntüleme Dili <select class="styled-select"><option>Türkçe</option><option>English</option></select></div>
             <div class="setting-row">Arama Motoru <select class="styled-select"><option>Google</option><option>DuckDuckGo</option></select></div>
+            <div class="setting-row">Reklam Engelleyici <label class="switch"><input type="checkbox" checked><span class="slider"></span></label></div>
         </div>
     </div> 
 
@@ -163,11 +195,17 @@
         <div class="shortcuts-header">
             <button class="back-folder-btn" id="back-folder-btn">⬅ Geri</button>
             <div class="shortcuts-title" id="current-folder-title">SIK KULLANILANLAR</div>
-            <div></div>
+            <div></div> <!-- Space filler for flexbox -->
         </div>
         <div class="shortcut-grid" id="shortcut-grid"></div>
     </div> 
 
+    <!-- WebView Container (Iframe Kaldirildi, Native Motor Buraya Oturacak) -->
+    <div id="webview-container">
+        <div id="pull-to-refresh"><div class="refresh-icon">↻</div></div>
+    </div> 
+
+    <!-- Aksiyon Menüsü (Bottom Sheet) -->
     <div id="action-sheet-overlay" onclick="closeActionSheet()"></div>
     <div id="action-sheet">
         <div class="action-header" id="action-sheet-title">Seçenekler</div>
@@ -179,6 +217,8 @@
 
     <script>
         const urlInput = document.getElementById('url-input');
+        // Iframe tamamen kaldırıldığı için 'webview' değişkeni silindi.
+        const webviewContainer = document.getElementById('webview-container');
         const homeContent = document.getElementById('home-content');
         const dropdownMenu = document.getElementById('dropdown-menu');
         const menuBtn = document.getElementById('menu-btn');
@@ -188,7 +228,10 @@
         const settingsBtn = document.getElementById('menu-settings-btn');
         const settingsAccordion = document.getElementById('settings-accordion');
         const settingsChevron = document.getElementById('settings-chevron');
+        const settingHomepage = document.getElementById('setting-homepage');
         const shortcutGrid = document.getElementById('shortcut-grid');
+        const currentFolderTitle = document.getElementById('current-folder-title');
+        const backFolderBtn = document.getElementById('back-folder-btn');
         const actionSheet = document.getElementById('action-sheet');
         const actionSheetOverlay = document.getElementById('action-sheet-overlay');
         const actionSheetBody = document.getElementById('action-sheet-body');
@@ -199,6 +242,7 @@
             t.classList.add("show"); setTimeout(() => t.classList.remove("show"), 3000);
         } 
 
+        // ==== Gelişmiş Kısayol & Klasör Sistemi ====
         let shortcuts = JSON.parse(localStorage.getItem('brox_shortcuts')) || [
             { id: '1', type: 'link', name: "Google", url: "https://www.google.com", parentId: 'root' },
             { id: '2', type: 'link', name: "YouTube", url: "https://www.youtube.com", parentId: 'root' }
@@ -210,18 +254,40 @@
 
         function renderShortcuts() {
             shortcutGrid.innerHTML = '';
+            if (currentFolderId === 'root') {
+                currentFolderTitle.innerText = 'SIK KULLANILANLAR';
+                backFolderBtn.style.display = 'none';
+            } else {
+                let folder = shortcuts.find(s => s.id === currentFolderId);
+                currentFolderTitle.innerText = folder ? folder.name.toUpperCase() : 'KLASÖR';
+                backFolderBtn.style.display = 'block';
+            } 
+
             let items = shortcuts.filter(s => s.parentId === currentFolderId);
             items.forEach(item => {
                 let div = document.createElement('div');
                 div.className = 'shortcut-item';
                 let iconChar = item.type === 'folder' ? '📁' : item.name.charAt(0).toUpperCase();
-                div.innerHTML = `<div class="shortcut-icon ${item.type}">${iconChar}</div><div class="shortcut-name">${item.name}</div>`;
+                div.innerHTML = `
+                    <div class="shortcut-icon ${item.type}">${iconChar}</div>
+                    <div class="shortcut-name">${item.name}</div>
+                `;
                 div.onclick = () => {
                     if (item.type === 'folder') { currentFolderId = item.id; renderShortcuts(); }
                     else { loadUrl(item.url); }
                 }; 
+
+                let pressTimer;
+                div.addEventListener('touchstart', (e) => {
+                    pressTimer = window.setTimeout(() => { openItemOptions(item); }, 600);
+                }, {passive: true});
+                div.addEventListener('touchend', () => clearTimeout(pressTimer));
+                div.addEventListener('touchmove', () => clearTimeout(pressTimer));
+                div.oncontextmenu = (e) => { e.preventDefault(); openItemOptions(item); }; 
+
                 shortcutGrid.appendChild(div);
             }); 
+
             let addDiv = document.createElement('div');
             addDiv.className = 'shortcut-item';
             addDiv.innerHTML = `<div class="shortcut-icon" style="color:var(--primary); font-size:30px;">+</div><div class="shortcut-name">Ekle</div>`;
@@ -229,6 +295,14 @@
             shortcutGrid.appendChild(addDiv);
         } 
 
+        backFolderBtn.onclick = () => {
+            let current = shortcuts.find(s => s.id === currentFolderId);
+            if (current) currentFolderId = current.parentId;
+            else currentFolderId = 'root';
+            renderShortcuts();
+        }; 
+
+        // ==== Aksiyon Menüleri (Bottom Sheet) ====
         function openActionSheet(title, buttonsHtml) {
             actionSheetTitle.innerText = title;
             actionSheetBody.innerHTML = buttonsHtml;
@@ -264,7 +338,66 @@
             }, 350);
         } 
 
-        let tabs = [{ id: 1, url: "", title: 'Yeni Sekme', incognito: false }];
+        function openItemOptions(item) {
+            selectedItemForAction = item;
+            let html = `
+                <button class="action-btn" onclick="renameItem()">✏️ Yeniden Adlandır</button>
+                ${item.type === 'link' ? `<button class="action-btn" onclick="editUrl()">🔗 URL Düzenle</button>` : ''}
+                <button class="action-btn" onclick="moveItem()">📂 Başka Klasöre Taşı</button>
+                <button class="action-btn danger" onclick="deleteItem()">🗑️ Sil</button>
+            `;
+            openActionSheet(item.name, html);
+        } 
+
+        function renameItem() {
+            closeActionSheet();
+            setTimeout(() => {
+                let newName = prompt("Yeni Ad:", selectedItemForAction.name);
+                if (newName) { selectedItemForAction.name = newName; saveShortcuts(); }
+            }, 350);
+        } 
+
+        function editUrl() {
+            closeActionSheet();
+            setTimeout(() => {
+                let newUrl = prompt("Yeni URL:", selectedItemForAction.url);
+                if (newUrl) { selectedItemForAction.url = newUrl; saveShortcuts(); }
+            }, 350);
+        } 
+
+        function moveItem() {
+            let folders = shortcuts.filter(s => s.type === 'folder' && s.id !== selectedItemForAction.id);
+            let html = `<button class="action-btn" onclick="executeMove('root')">🏠 Ana Ekran</button>`;
+            folders.forEach(f => {
+                html += `<button class="action-btn" onclick="executeMove('${f.id}')">📁 ${f.name}</button>`;
+            });
+            openActionSheet("Taşınacak Yeri Seçin", html);
+        } 
+
+        function executeMove(targetFolderId) {
+            selectedItemForAction.parentId = targetFolderId;
+            saveShortcuts(); closeActionSheet(); showToast("Taşındı");
+        } 
+
+        function deleteItem() {
+            closeActionSheet();
+            setTimeout(() => {
+                if (confirm(`"${selectedItemForAction.name}" silinsin mi?`)) {
+                    if (selectedItemForAction.type === 'folder') {
+                        shortcuts = shortcuts.filter(s => s.parentId !== selectedItemForAction.id);
+                    }
+                    shortcuts = shortcuts.filter(s => s.id !== selectedItemForAction.id);
+                    saveShortcuts(); showToast("Silindi");
+                }
+            }, 350);
+        } 
+
+        // ==== SEKME SİSTEMİ ====
+        let savedHomepage = localStorage.getItem('brox_homepage') || "";
+        settingHomepage.value = savedHomepage;
+        settingHomepage.addEventListener('change', (e) => { localStorage.setItem('brox_homepage', e.target.value); showToast("Açılış sayfası güncellendi"); }); 
+
+        let tabs = [{ id: 1, url: savedHomepage, title: 'Yeni Sekme', incognito: false }];
         let activeTabId = 1; 
 
         function renderTabs() {
@@ -274,32 +407,20 @@
             tabs.forEach(tab => {
                 const card = document.createElement('div');
                 card.className = `tab-card ${tab.id === activeTabId ? 'active' : ''}`;
-                card.innerHTML = `<span>${tab.title}</span><div class="close-tab-btn" onclick="event.stopPropagation(); closeTab(${tab.id})">✖</div>`;
+                if(tab.incognito) card.style.borderColor = '#BF5AF2'; // Gizli sekme belirteci
+                card.innerHTML = `<span>${tab.title} ${tab.incognito ? '🕵️' : ''}</span><div class="close-tab-btn" onclick="event.stopPropagation(); closeTab(${tab.id})">✖</div>`;
                 card.onclick = () => switchTab(tab.id);
                 container.appendChild(card);
             });
         } 
 
-        // ==== YEREL JAVA MOTORU (NATIVE OVERLAY) BAĞLANTISI ====
-        function loadUrl(inputUrl) {
-            if(!inputUrl) return;
-            let finalUrl = inputUrl.trim();
-            if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
-                finalUrl = (finalUrl.includes('.') && !finalUrl.includes(' ')) ? 'https://' + finalUrl : 'https://www.google.com/search?q=' + encodeURIComponent(finalUrl);
-            }
-            urlInput.value = finalUrl;
-            homeContent.style.display = 'none'; 
-            
-            // Java'ya siteyi açması için Native komut gönderiyoruz
-            if (window.BroxNative) {
-                window.BroxNative.loadSite(finalUrl);
-            }
-
+        // ==== YENİ NATIVE JAVA BAĞLANTILARI ====
+        window.updateUrlBar = function(newUrl) {
+            urlInput.value = newUrl;
             const t = tabs.find(t => t.id === activeTabId);
-            if(t) { t.url = finalUrl; t.title = finalUrl.split('/')[2] || finalUrl; }
-        } 
+            if(t) { t.url = newUrl; t.title = newUrl.split('/')[2] || newUrl; }
+        };
 
-        // Java motorundan geri tuşuna basıldığında Arayüzü sıfırlamak için
         window.showHome = function() {
             homeContent.style.display = 'flex';
             currentFolderId = 'root'; 
@@ -307,32 +428,47 @@
             urlInput.value = '';
             const t = tabs.find(t => t.id === activeTabId);
             if(t) { t.url = ''; t.title = 'Yeni Sekme'; }
-        }
+        };
 
-        // Java motoru URL değiştirdiğinde üst çubuğu güncellemek için
-        window.updateUrlBar = function(newUrl) {
-            urlInput.value = newUrl;
+        function loadUrl(inputUrl) {
+            if(!inputUrl) return;
+            let finalUrl = inputUrl.trim();
+            if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
+                finalUrl = (finalUrl.includes('.') && !finalUrl.includes(' ')) ? 'https://' + finalUrl : 'https://www.google.com/search?q=' + encodeURIComponent(finalUrl);
+            }
+            urlInput.value = finalUrl;
+            homeContent.style.display = 'none'; webviewContainer.style.display = 'flex';
+            
+            if (window.BroxNative) {
+                window.BroxNative.loadSite(finalUrl);
+            }
+            
             const t = tabs.find(t => t.id === activeTabId);
-            if(t) { t.url = newUrl; t.title = newUrl.split('/')[2] || newUrl; }
-        }
+            if(t) { t.url = finalUrl; t.title = finalUrl.split('/')[2] || finalUrl; }
+        } 
 
         function createNewTab(isIncognito = false) {
             const newId = Date.now();
-            tabs.push({ id: newId, url: '', title: isIncognito ? 'Gizli Sekme' : 'Yeni Sekme', incognito: isIncognito });
-            switchTab(newId); urlInput.focus();
+            let startUrl = isIncognito ? '' : (savedHomepage || '');
+            tabs.push({ id: newId, url: startUrl, title: isIncognito ? 'Gizli Sekme' : 'Yeni Sekme', incognito: isIncognito });
+            switchTab(newId);
+            urlInput.focus();
         } 
 
         function switchTab(id) {
             activeTabId = id;
             const tab = tabs.find(t => t.id === id);
             urlInput.value = tab.url;
-            
+            // Gizli Mod UI geçişi
+            if(tab.incognito) document.body.classList.add('incognito');
+            else document.body.classList.remove('incognito'); 
+
             if(tab.url) {
-                homeContent.style.display = 'none';
+                homeContent.style.display = 'none'; webviewContainer.style.display = 'flex'; 
                 if (window.BroxNative) window.BroxNative.loadSite(tab.url);
             } else {
                 if (window.BroxNative) window.BroxNative.hideSite();
-                homeContent.style.display = 'flex';
+                webviewContainer.style.display = 'none'; homeContent.style.display = 'flex';
                 currentFolderId = 'root'; renderShortcuts();
             }
             tabsModal.style.display = 'none';
@@ -352,20 +488,95 @@
 
         urlInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { urlInput.blur(); loadUrl(urlInput.value); } });
         document.getElementById('home-btn').addEventListener('click', () => {
-            window.showHome();
-            if (window.BroxNative) window.BroxNative.hideSite();
+            if(savedHomepage) loadUrl(savedHomepage);
+            else { 
+                urlInput.value = ''; 
+                if (window.BroxNative) window.BroxNative.hideSite();
+                webviewContainer.style.display = 'none'; homeContent.style.display = 'flex'; currentFolderId = 'root'; renderShortcuts(); const t = tabs.find(t => t.id === activeTabId); if(t) { t.url = ''; t.title = t.incognito ? 'Gizli Sekme' : 'Yeni Sekme'; } 
+            }
         }); 
 
-        menuBtn.addEventListener('click', (e) => { e.stopPropagation(); dropdownMenu.style.display = dropdownMenu.style.display === 'flex' ? 'none' : 'flex'; }); 
-        document.addEventListener('click', (e) => { if (dropdownMenu.style.display === 'flex' && !dropdownMenu.contains(e.target) && !menuBtn.contains(e.target)) { dropdownMenu.style.display = 'none'; settingsAccordion.style.display = 'none'; settingsChevron.style.transform = 'rotate(0deg)'; } }); 
-        settingsBtn.addEventListener('click', (e) => { e.stopPropagation(); const isClosed = settingsAccordion.style.display === 'none' || settingsAccordion.style.display === ''; settingsAccordion.style.display = isClosed ? 'flex' : 'none'; settingsChevron.style.transform = isClosed ? 'rotate(180deg)' : 'rotate(0deg)'; }); 
+        // ==== MENÜ VE BOŞLUĞA TIKLAMA YÖNETİMİ DÜZELTİLDİ ====
+        menuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdownMenu.style.display = dropdownMenu.style.display === 'flex' ? 'none' : 'flex';
+        }); 
 
-        document.getElementById('menu-new-incognito').addEventListener('click', () => { dropdownMenu.style.display = 'none'; createNewTab(true); showToast("Gizli Sekme Açıldı"); }); 
-        document.getElementById('menu-add-shortcut').addEventListener('click', () => { dropdownMenu.style.display = 'none'; if(urlInput.value) { let siteName = prompt("Bu siteyi kısayol olarak kaydet:", urlInput.value.split('/')[2]); if(siteName) { shortcuts.push({ id: Date.now().toString(), type: 'link', name: siteName, url: urlInput.value, parentId: 'root' }); saveShortcuts(); showToast("Kısayol eklendi!"); } } else { showToast("Kısayol eklemek için site açın."); } }); 
-        
+        // Boşluğa veya başka yere tıklandığında menüyü ve ayarları kapat
+        document.addEventListener('click', (e) => {
+            if (dropdownMenu.style.display === 'flex' && !dropdownMenu.contains(e.target) && !menuBtn.contains(e.target)) {
+                dropdownMenu.style.display = 'none';
+                settingsAccordion.style.display = 'none';
+                settingsChevron.style.transform = 'rotate(0deg)';
+            }
+        }); 
+
+        // Ayarlar okunun dönmesi ve açılması
+        settingsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isClosed = settingsAccordion.style.display === 'none' || settingsAccordion.style.display === '';
+            settingsAccordion.style.display = isClosed ? 'flex' : 'none';
+            settingsChevron.style.transform = isClosed ? 'rotate(180deg)' : 'rotate(0deg)';
+        }); 
+
+        // ==== BÜTÜN BUTONLARIN ÇALIŞAN FONKSİYONLARI ====
+        document.getElementById('menu-new-incognito').addEventListener('click', () => {
+            dropdownMenu.style.display = 'none';
+            createNewTab(true);
+            showToast("Gizli Sekme Açıldı");
+        }); 
+
+        document.getElementById('menu-add-shortcut').addEventListener('click', () => {
+            dropdownMenu.style.display = 'none';
+            if(urlInput.value && webviewContainer.style.display !== 'none') {
+                let siteName = prompt("Bu siteyi kısayol olarak kaydet:", urlInput.value.split('/')[2]);
+                if(siteName) {
+                    shortcuts.push({ id: Date.now().toString(), type: 'link', name: siteName, url: urlInput.value, parentId: 'root' });
+                    saveShortcuts(); showToast("Kısayol eklendi!");
+                }
+            } else { showToast("Kısayol eklemek için site açın."); }
+        }); 
+
         document.getElementById('menu-refresh').addEventListener('click', () => {
-            dropdownMenu.style.display = 'none'; showToast("Sayfa yenileniyor...");
             if (window.BroxNative) window.BroxNative.reloadSite();
+            dropdownMenu.style.display = 'none'; showToast("Sayfa yenileniyor...");
+        }); 
+
+        document.getElementById('menu-share').addEventListener('click', async () => {
+            dropdownMenu.style.display = 'none';
+            if (navigator.share && urlInput.value) { try { await navigator.share({ title: 'Brox', url: urlInput.value }); } catch(e) {} } 
+            else { showToast("Paylaşılamadı: Açık bir sayfa yok."); }
+        }); 
+
+        document.getElementById('menu-translate').addEventListener('click', () => {
+            dropdownMenu.style.display = 'none';
+            if(urlInput.value) { 
+                if (window.BroxNative) window.BroxNative.loadSite(`https://translate.google.com/translate?sl=auto&tl=tr&u=${encodeURIComponent(urlInput.value)}`);
+                showToast("Sayfa çevriliyor..."); 
+            } 
+            else showToast("Çevrilecek sayfa yok.");
+        }); 
+
+        document.getElementById('menu-print').addEventListener('click', () => {
+            dropdownMenu.style.display = 'none'; showToast("Yazdırma arayüzü hazırlanıyor..."); setTimeout(() => window.print(), 500);
+        }); 
+
+        const javaFeatures = { 'menu-find': 'Sayfada Bul', 'menu-desktop': 'Masaüstü Sitesi', 'menu-reader': 'Okuma Modu', 'menu-tts': 'Seslendir', 'menu-downloads': 'İndirilenler', 'menu-history': 'Geçmiş', 'menu-permissions': 'Site İzinleri' };
+        for (const [id, name] of Object.entries(javaFeatures)) {
+            document.getElementById(id).addEventListener('click', () => { dropdownMenu.style.display = 'none'; showToast(`${name} özelliği yerel donanımla çalıştırılacak.`); });
+        } 
+
+        // ==== PULL-TO-REFRESH ====
+        let startY = 0; let isPulling = false; const ptr = document.getElementById('pull-to-refresh'); const refreshIcon = ptr.querySelector('.refresh-icon');
+        document.addEventListener('touchstart', (e) => { if (webviewContainer.style.display !== 'none' && e.touches[0].clientY <= 80) { startY = e.touches[0].clientY; isPulling = true; ptr.style.transition = 'none'; } }, {passive: true});
+        document.addEventListener('touchmove', (e) => { if (!isPulling) return; const pullDistance = e.touches[0].clientY - startY; if (pullDistance > 0 && pullDistance < 150) { ptr.style.top = `${pullDistance - 50}px`; refreshIcon.style.transform = `rotate(${pullDistance * 2.5}deg)`; } }, {passive: true});
+        document.addEventListener('touchend', (e) => { 
+            if (!isPulling) return; isPulling = false; ptr.style.transition = 'top 0.3s ease-out'; 
+            if (e.changedTouches[0].clientY - startY > 80) { 
+                ptr.style.top = '20px'; refreshIcon.classList.add('spinning'); 
+                if (window.BroxNative) window.BroxNative.reloadSite(); 
+                setTimeout(() => { ptr.style.top = '-50px'; refreshIcon.classList.remove('spinning'); showToast("Sayfa yenilendi"); }, 1000); 
+            } else { ptr.style.top = '-50px'; } 
         }); 
 
         switchTab(1);

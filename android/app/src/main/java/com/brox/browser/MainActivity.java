@@ -53,9 +53,9 @@ public class MainActivity extends BridgeActivity {
                         });
                         nativeBrowser.setWebChromeClient(new WebChromeClient());
 
-                        // HTML araç çubuğunun (56px) tam altından başlaması için boşluk bırakıyoruz
+                        // HTML araç çubuğunun ve gölgesinin (69px) tam altından başlaması için boşluk bırakıyoruz
                         float density = getResources().getDisplayMetrics().density;
-                        int marginTop = (int)(56 * density);
+                        int marginTop = (int)(69 * density);
                         FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
                             ViewGroup.LayoutParams.MATCH_PARENT,
                             ViewGroup.LayoutParams.MATCH_PARENT
