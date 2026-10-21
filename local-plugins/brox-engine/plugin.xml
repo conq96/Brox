@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0" id="cordova-plugin-brox-engine" version="1.0.0">
+    <name>BroxEngine</name>
+    <js-module src="www/BroxEngine.js" name="BroxEngine">
+        <clobbers target="BroxEngine" />
+    </js-module>
+    <platform name="android">
+        <config-file target="res/xml/config.xml" parent="/*">
+            <feature name="BroxEngine">
+                <param name="android-package" value="com.brox.engine.BroxEngine" />
+            </feature>
+        </config-file>
+        <source-file src="src/android/BroxEngine.java" target-dir="src/com/brox/engine" />
+    </platform>
+</plugin>
