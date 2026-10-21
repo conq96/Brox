@@ -1,5 +1,6 @@
 {
   "appId": "com.brox.browser",
   "appName": "Brox",
-  "webDir": "www"
+  "webDir": "www",
+  "bundledWebRuntime": false
 }
