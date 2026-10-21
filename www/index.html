@@ -434,13 +434,13 @@
             if(!inputUrl) return;
             let finalUrl = inputUrl.trim();
             if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
-                finalUrl = (finalUrl.includes('.') && !finalUrl.includes(' ')) ? 'https://' + finalUrl : 'https://www.google.com/search?q=' + encodeURIComponent(finalUrl);
+                finalUrl = (finalUrl.includes('.') && !finalUrl.includes(' ')) ? 'https://' + finalUrl : 'https://www.google.com/search?q=' + encodeURIComponent(finalUrl });
             }
             urlInput.value = finalUrl;
             homeContent.style.display = 'none'; webviewContainer.style.display = 'flex';
             
-            if (window.BroxNative) {
-                window.BroxNative.loadSite(finalUrl);
+            if (window.Capacitor && window.Capacitor.Plugins.BroxEngine) {
+                window.Capacitor.Plugins.BroxEngine.loadUrl({ url: (finalUrl });
             }
             
             const t = tabs.find(t => t.id === activeTabId);
@@ -465,9 +465,9 @@
 
             if(tab.url) {
                 homeContent.style.display = 'none'; webviewContainer.style.display = 'flex'; 
-                if (window.BroxNative) window.BroxNative.loadSite(tab.url);
+                if (window.BroxNative) window.Capacitor.Plugins.BroxEngine.loadUrl({ url: (tab.url });
             } else {
-                if (window.BroxNative) window.BroxNative.hideSite();
+                if (window.Capacitor && window.Capacitor.Plugins.BroxEngine) window.Capacitor.Plugins.BroxEngine.hideWebView();
                 webviewContainer.style.display = 'none'; homeContent.style.display = 'flex';
                 currentFolderId = 'root'; renderShortcuts();
             }
@@ -491,7 +491,7 @@
             if(savedHomepage) loadUrl(savedHomepage);
             else { 
                 urlInput.value = ''; 
-                if (window.BroxNative) window.BroxNative.hideSite();
+                if (window.Capacitor && window.Capacitor.Plugins.BroxEngine) window.Capacitor.Plugins.BroxEngine.hideWebView();
                 webviewContainer.style.display = 'none'; homeContent.style.display = 'flex'; currentFolderId = 'root'; renderShortcuts(); const t = tabs.find(t => t.id === activeTabId); if(t) { t.url = ''; t.title = t.incognito ? 'Gizli Sekme' : 'Yeni Sekme'; } 
             }
         }); 
@@ -538,7 +538,7 @@
         }); 
 
         document.getElementById('menu-refresh').addEventListener('click', () => {
-            if (window.BroxNative) window.BroxNative.reloadSite();
+            if (window.Capacitor && window.Capacitor.Plugins.BroxEngine) window.Capacitor.Plugins.BroxEngine.reload();
             dropdownMenu.style.display = 'none'; showToast("Sayfa yenileniyor...");
         }); 
 
@@ -551,7 +551,7 @@
         document.getElementById('menu-translate').addEventListener('click', () => {
             dropdownMenu.style.display = 'none';
             if(urlInput.value) { 
-                if (window.BroxNative) window.BroxNative.loadSite(`https://translate.google.com/translate?sl=auto&tl=tr&u=${encodeURIComponent(urlInput.value)}`);
+                if (window.BroxNative) window.Capacitor.Plugins.BroxEngine.loadUrl({ url: (`https://translate.google.com/translate?sl=auto`https://translate.google.com/translate?sl=auto&tl=tr&u=${encodeURIComponent(urlInput.value)}`);tl=tr`https://translate.google.com/translate?sl=auto&tl=tr&u=${encodeURIComponent(urlInput.value)}`);u=${encodeURIComponent(urlInput.value)}` });
                 showToast("Sayfa çevriliyor..."); 
             } 
             else showToast("Çevrilecek sayfa yok.");
@@ -574,7 +574,7 @@
             if (!isPulling) return; isPulling = false; ptr.style.transition = 'top 0.3s ease-out'; 
             if (e.changedTouches[0].clientY - startY > 80) { 
                 ptr.style.top = '20px'; refreshIcon.classList.add('spinning'); 
-                if (window.BroxNative) window.BroxNative.reloadSite(); 
+                if (window.Capacitor && window.Capacitor.Plugins.BroxEngine) window.Capacitor.Plugins.BroxEngine.reload(); 
                 setTimeout(() => { ptr.style.top = '-50px'; refreshIcon.classList.remove('spinning'); showToast("Sayfa yenilendi"); }, 1000); 
             } else { ptr.style.top = '-50px'; } 
         }); 
