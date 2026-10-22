@@ -1,6 +1,7 @@
 package com.brox.browser;
 
 import android.os.Bundle;
+import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -18,6 +19,9 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Varsayılan olarak ekran korumasını (FLAG_SECURE) aktif başlat
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);
 
         WebView capacitorWebView = this.bridge.getWebView();
 
@@ -88,10 +92,20 @@ public class MainActivity extends BridgeActivity {
             public void goBack() {
                 runOnUiThread(() -> {
                     if (nativeBrowser != null && nativeBrowser.canGoBack()) {
+                        nativeBrowser.canGoBack();
                         nativeBrowser.goBack();
                     } else {
                         hideWebView();
                         bridge.getWebView().evaluateJavascript("if(window.resetBrowser) window.resetBrowser();", null);
+                    }
+                });
+            }
+
+            @JavascriptInterface
+            public void goForward() {
+                runOnUiThread(() -> {
+                    if (nativeBrowser != null && nativeBrowser.canGoForward()) {
+                        nativeBrowser.goForward();
                     }
                 });
             }
@@ -104,21 +118,30 @@ public class MainActivity extends BridgeActivity {
                     }
                 });
             }
+
+            @JavascriptInterface
+            public void setScreenProtection(final boolean enable) {
+                runOnUiThread(() -> {
+                    if (enable) {
+                        getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);
+                    } else {
+                        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SECURE);
+                    }
+                });
+            }
         }, "BroxNative");
     }
 
     @Override
     public void onBackPressed() {
-        if (nativeBrowser != null && nativeBrowser.getVisibility() == View.VISIBLE) {
-            if (nativeBrowser.canGoBack()) {
-                nativeBrowser.goBack();
-            } else {
+        if (nativeBrowser != null && nativeBrowser.getVisibility() == View.VISIBLE && nativeBrowser.canGoBack()) {
+            nativeBrowser.goBack();
+        } else {
+            if (nativeBrowser != null) {
                 nativeBrowser.setVisibility(View.GONE);
                 nativeBrowser.loadUrl("about:blank");
-                this.bridge.getWebView().evaluateJavascript("if(window.resetBrowser) window.resetBrowser();", null);
             }
-        } else {
-            super.onBackPressed();
+            this.bridge.getWebView().evaluateJavascript("if(window.resetBrowser) window.resetBrowser();", null);
         }
     }
 }

@@ -25,7 +25,6 @@
         }
         body.incognito #toolbar { background-color: var(--incognito); }
 
-        #back-btn { display: none; background: var(--bg-surface); color: var(--text-main); border: 1px solid var(--border); padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; }
         #home-toolbar-btn { display: none; }
 
         .input-container {
@@ -60,13 +59,13 @@
         .menu-item:hover svg { stroke: var(--text-main); }
         .menu-divider { height: 1px; background-color: var(--border); margin: 4px 0; }
 
-        /* Ayarlar Modalı (Gelişmiş Brave Tarzı) */
+        /* Ayarlar Modalı */
         #settings-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.9); z-index: 70; backdrop-filter: blur(10px); flex-direction: column; padding: 25px; box-sizing: border-box; overflow-y: auto; }
         .settings-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; font-size: 20px; font-weight: 500; color: var(--text-main); }
         .setting-section-title { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin: 15px 0 8px 0; }
         .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 14px; color: var(--text-main); }
         .setting-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
-        .setting-select { background: var(--bg-surface); color: var(--text-main); border: 1px solid var(--border); padding: 6px 12px; border-radius: 8px; outline: none; font-size: 13px; }
+        .setting-select, .setting-input { background: var(--bg-surface); color: var(--text-main); border: 1px solid var(--border); padding: 6px 12px; border-radius: 8px; outline: none; font-size: 13px; max-width: 160px; }
         
         /* Toggle Switch */
         .switch { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
@@ -100,7 +99,6 @@
 <body> 
 
     <div id="toolbar">
-        <button id="back-btn" title="Geri">⬅ Geri</button>
         <button class="icon-btn" id="home-toolbar-btn" title="Ana Sayfa">
             <svg viewBox="0 0 24 24" fill="none"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
         </button>
@@ -122,6 +120,13 @@
         <button class="menu-item" id="m-refresh">
             <svg viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.59-9.21l5.67-1.36"></path></svg> Sayfayı Yenile
         </button>
+        <button class="menu-item" id="m-back">
+            <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg> Geri
+        </button>
+        <button class="menu-item" id="m-forward">
+            <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg> İleri
+        </button>
+        <div class="menu-divider"></div>
         <button class="menu-item" id="m-share">
             <svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13"></path></svg> Paylaş
         </button>
@@ -148,19 +153,34 @@
         </button>
     </div> 
 
-    <!-- Gelişmiş Ayarlar Modalı -->
+    <!-- Ayarlar Modalı -->
     <div id="settings-modal">
         <div class="settings-header">Ayarlar <span id="close-settings" style="cursor:pointer; font-size:24px; color:var(--text-muted);">×</span></div>
         
-        <div class="setting-section-title">Genel & Görünüm</div>
+        <div class="setting-section-title">Arama Motoru</div>
         <div class="setting-row">
-            <span>Arama Motoru</span>
+            <span>Varsayılan Arama Motoru</span>
             <select id="search-engine-select" class="setting-select">
                 <option value="https://www.google.com/search?q=">Google</option>
                 <option value="https://duckduckgo.com/?q=">DuckDuckGo</option>
                 <option value="https://search.brave.com/search?q=">Brave Search</option>
+                <option value="https://www.bing.com/search?q=">Bing</option>
+                <option value="https://search.yahoo.com/search?p=">Yahoo</option>
+                <option value="https://yandex.com/search/?text=">Yandex</option>
+                <option value="https://qwant.com/?q=">Qwant</option>
+                <option value="https://www.startpage.com/sp/search?query=">Startpage</option>
+                <option value="custom">Manuel Ekle...</option>
             </select>
         </div>
+        <div class="setting-row" id="custom-engine-row" style="display:none;">
+            <div>
+                <div>Özel Arama URL Yapısı</div>
+                <div class="setting-desc">Örn: https://www.youtube.com/results?search_query=</div>
+            </div>
+            <input type="text" id="custom-engine-input" class="setting-input" placeholder="URL şablonu yazın">
+        </div>
+
+        <div class="setting-section-title">Görünüm</div>
         <div class="setting-row">
             <span>Araç Çubuğunda Ana Sayfa Butonu</span>
             <label class="switch"><input type="checkbox" id="home-btn-toggle"><span class="slider"></span></label>
@@ -175,26 +195,11 @@
 
         <div class="setting-section-title">Gizlilik & Güvenlik</div>
         <div class="setting-row">
-            <span>Reklam & İzleyici Engelleyici</span>
-            <select id="adblock-select" class="setting-select">
-                <option value="standard">Standart</option>
-                <option value="aggressive">Agresif</option>
-                <option value="off">Kapalı</option>
-            </select>
-        </div>
-        <div class="setting-row">
             <div>
-                <div>Gizli Sekmelerde Ekran Görüntüsü</div>
-                <div class="setting-desc">Ekran görüntüsü alınmasına izin ver</div>
+                <div>Ekran Görüntüsü / Kayıt Koruması</div>
+                <div class="setting-desc">Brox açıkken ekran görüntüsü ve izlemeyi engelle</div>
             </div>
-            <label class="switch"><input type="checkbox" id="screenshot-toggle"><span class="slider"></span></label>
-        </div>
-        <div class="setting-row">
-            <div>
-                <div>Çıkışta Sekmeleri Kapat</div>
-                <div class="setting-desc">Göz atma oturumları arasında sevgileri açık bırakmayın</div>
-            </div>
-            <label class="switch"><input type="checkbox" id="close-tabs-toggle"><span class="slider"></span></label>
+            <label class="switch"><input type="checkbox" id="screenshot-toggle" checked><span class="slider"></span></label>
         </div>
         <div class="setting-row">
             <span>Güvenli DNS Kullan</span>
@@ -228,7 +233,6 @@
         const centerUrlInput = document.getElementById('center-url-input');
         const centerSearchBtn = document.getElementById('center-search-btn');
         const homeContent = document.getElementById('home-content');
-        const backBtn = document.getElementById('back-btn');
         const homeToolbarBtn = document.getElementById('home-toolbar-btn');
         const addTabBtn = document.getElementById('add-tab-btn');
         const tabCounterBtn = document.getElementById('tab-counter-btn');
@@ -237,13 +241,12 @@
         const tabsModal = document.getElementById('tabs-modal');
         const settingsModal = document.getElementById('settings-modal');
 
-        // Ayarlar elemanları
         const searchEngineSelect = document.getElementById('search-engine-select');
+        const customEngineRow = document.getElementById('custom-engine-row');
+        const customEngineInput = document.getElementById('custom-engine-input');
         const homeBtnToggle = document.getElementById('home-btn-toggle');
         const darkModeToggle = document.getElementById('dark-mode-toggle');
-        const adblockSelect = document.getElementById('adblock-select');
         const screenshotToggle = document.getElementById('screenshot-toggle');
-        const closeTabsToggle = document.getElementById('close-tabs-toggle');
         const dnsSelect = document.getElementById('dns-select');
 
         function showToast(msg) {
@@ -251,9 +254,33 @@
             t.classList.add("show"); setTimeout(() => t.classList.remove("show"), 2500);
         } 
 
-        // Ayar kalıcılığı
-        searchEngineSelect.value = localStorage.getItem('brox_engine') || 'https://www.google.com/search?q=';
-        searchEngineSelect.onchange = (e) => { localStorage.setItem('brox_engine', e.target.value); showToast("Arama motoru güncellendi"); };
+        // Arama Motoru Ayarları
+        let savedEngine = localStorage.getItem('brox_engine') || 'https://www.google.com/search?q=';
+        let customEngineVal = localStorage.getItem('brox_custom_engine') || '';
+        
+        if(['https://www.google.com/search?q=', 'https://duckduckgo.com/?q=', 'https://search.brave.com/search?q=', 'https://www.bing.com/search?q=', 'https://search.yahoo.com/search?p=', 'https://yandex.com/search/?text=', 'https://qwant.com/?q=', 'https://www.startpage.com/sp/search?query='].includes(savedEngine)) {
+            searchEngineSelect.value = savedEngine;
+            customEngineRow.style.display = 'none';
+        } else {
+            searchEngineSelect.value = 'custom';
+            customEngineRow.style.display = 'flex';
+            customEngineInput.value = savedEngine;
+        }
+
+        searchEngineSelect.onchange = (e) => {
+            if(e.target.value === 'custom') {
+                customEngineRow.style.display = 'flex';
+                localStorage.setItem('brox_engine', customEngineInput.value || 'https://www.youtube.com/results?search_query=');
+            } else {
+                customEngineRow.style.display = 'none';
+                localStorage.setItem('brox_engine', e.target.value);
+            }
+            showToast("Arama motoru güncellendi");
+        };
+
+        customEngineInput.oninput = (e) => {
+            localStorage.setItem('brox_engine', e.target.value);
+        };
 
         let showHomeBtn = localStorage.getItem('brox_show_home') === 'true';
         homeBtnToggle.checked = showHomeBtn;
@@ -263,14 +290,15 @@
         darkModeToggle.checked = localStorage.getItem('brox_dark') === 'true';
         darkModeToggle.onchange = (e) => { localStorage.setItem('brox_dark', e.target.checked); showToast("Koyu mod ayarlandı"); };
 
-        adblockSelect.value = localStorage.getItem('brox_adblock') || 'standard';
-        adblockSelect.onchange = (e) => { localStorage.setItem('brox_adblock', e.target.value); showToast("Engelleyici güncellendi"); };
-
-        screenshotToggle.checked = localStorage.getItem('brox_screenshot') === 'true';
-        screenshotToggle.onchange = (e) => { localStorage.setItem('brox_screenshot', e.target.checked); showToast("Ekran görüntüsü izni güncellendi"); };
-
-        closeTabsToggle.checked = localStorage.getItem('brox_closetabs') === 'true';
-        closeTabsToggle.onchange = (e) => { localStorage.setItem('brox_closetabs', e.target.checked); };
+        let screenshotProtect = localStorage.getItem('brox_screenshot_protect') !== 'false';
+        screenshotToggle.checked = screenshotProtect;
+        screenshotToggle.onchange = (e) => { 
+            localStorage.setItem('brox_screenshot_protect', e.target.checked); 
+            if (window.BroxNative && window.BroxNative.setScreenProtection) {
+                window.BroxNative.setScreenProtection(e.target.checked);
+            }
+            showToast("Ekran koruma ayarı güncellendi"); 
+        };
 
         dnsSelect.value = localStorage.getItem('brox_dns') || 'off';
         dnsSelect.onchange = (e) => { localStorage.setItem('brox_dns', e.target.value); showToast("Güvenli DNS güncellendi"); };
@@ -295,7 +323,7 @@
             if(!inputVal) return;
             let query = inputVal.trim();
             let finalUrl = query;
-            let engine = searchEngineSelect.value;
+            let engine = localStorage.getItem('brox_engine') || 'https://www.google.com/search?q=';
 
             if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
                 if (finalUrl.includes('.') && !finalUrl.includes(' ') && !finalUrl.startsWith('localhost')) {
@@ -308,7 +336,6 @@
             urlInput.value = finalUrl;
             centerUrlInput.value = '';
             homeContent.style.display = 'none';
-            backBtn.style.display = 'block';
 
             if (window.BroxNative && window.BroxNative.loadUrl) {
                 window.BroxNative.loadUrl(finalUrl);
@@ -320,7 +347,6 @@
 
         window.updateAddressBar = function(url) {
             urlInput.value = url;
-            backBtn.style.display = 'block';
             homeContent.style.display = 'none';
             const t = tabs.find(t => t.id === activeTabId);
             if(t) { t.url = url; t.title = url.split('/')[2] || url; }
@@ -328,7 +354,6 @@
 
         window.resetBrowser = function() {
             homeContent.style.display = 'flex';
-            backBtn.style.display = 'none';
             urlInput.value = '';
             centerUrlInput.value = '';
             const t = tabs.find(t => t.id === activeTabId);
@@ -373,6 +398,8 @@
         dropdownMenu.onclick = (e) => { e.stopPropagation(); };
 
         document.getElementById('m-refresh').onclick = () => { dropdownMenu.style.display = 'none'; if (window.BroxNative) window.BroxNative.reload(); showToast("Sayfa yenileniyor"); };
+        document.getElementById('m-back').onclick = () => { dropdownMenu.style.display = 'none'; if (window.BroxNative) window.BroxNative.goBack(); };
+        document.getElementById('m-forward').onclick = () => { dropdownMenu.style.display = 'none'; if (window.BroxNative) window.BroxNative.goForward(); };
         document.getElementById('m-share').onclick = async () => { dropdownMenu.style.display = 'none'; if (navigator.share && urlInput.value) { try { await navigator.share({ url: urlInput.value }); } catch(e){} } else showToast("Paylaşılabilecek sayfa yok"); };
         document.getElementById('m-save').onclick = () => { dropdownMenu.style.display = 'none'; showToast("Yer işaretlerine eklendi"); };
         document.getElementById('m-newtab').onclick = () => { dropdownMenu.style.display = 'none'; createNewTab(false); };
@@ -395,10 +422,6 @@
         homeToolbarBtn.onclick = () => {
             if (window.BroxNative && window.BroxNative.hideWebView) window.BroxNative.hideWebView();
             window.resetBrowser();
-        };
-
-        backBtn.onclick = () => {
-            if (window.BroxNative && window.BroxNative.goBack) window.BroxNative.goBack();
         };
 
         renderTabs();
