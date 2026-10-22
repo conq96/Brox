@@ -13,12 +13,13 @@
             --text-muted: #8E8E93; 
             --border: #38383A; 
             --incognito: #121019;
+            --accent: #E5E5EA;
         } 
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body, html { width: 100%; height: 100%; background-color: var(--bg-base); color: var(--text-main); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; flex-direction: column; overflow: hidden; -webkit-user-select: none; user-select: none; } 
 
-        /* Toolbar - Sıkıştırılmış ve Dengeli Tasarım */
+        /* Toolbar */
         #toolbar {
             display: flex; align-items: center; padding: 0 8px; height: 52px; gap: 6px;
             background-color: var(--bg-base); border-bottom: 1px solid var(--border); z-index: 20; flex-shrink: 0;
@@ -33,38 +34,21 @@
         #url-input { flex-grow: 1; background: transparent; border: none; color: var(--text-main); font-size: 14px; outline: none; width: 100%; -webkit-user-select: auto; user-select: auto; }
         #url-input::placeholder { color: var(--text-muted); }
 
-        /* Küçültülmüş Sağ Butonlar ve Daraltılmış Aralıklar */
         .icon-btn { background: none; border: none; color: var(--text-main); display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; cursor: pointer; border-radius: 8px; flex-shrink: 0; }
         .icon-btn:hover { background-color: var(--bg-hover); }
         .icon-btn svg { width: 18px; height: 18px; stroke-width: 1.8; stroke: var(--text-muted); } 
 
         #tab-counter-btn { border: 2px solid var(--text-muted); border-radius: 6px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; color: var(--text-muted); cursor: pointer; flex-shrink: 0; margin: 0 2px; } 
 
-        /* Ana Sayfa & Kısayollar Bloğu */
-        #home-content { flex-grow: 1; padding: 24px 16px; overflow-y: auto; display: flex; flex-direction: column; background: var(--bg-base); }
-        .shortcuts-title { font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
-        .shortcut-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 20px; }
-        .shortcut-item { display: flex; flex-direction: column; align-items: center; cursor: pointer; position: relative; }
-        .shortcut-icon { width: 56px; height: 56px; background-color: var(--bg-surface); border: 1px solid var(--border); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; color: var(--text-main); transition: 0.2s; }
-        .shortcut-item:hover .shortcut-icon { border-color: var(--text-main); background-color: var(--bg-hover); }
-        .shortcut-name { margin-top: 6px; font-size: 11px; color: var(--text-muted); width: 100%; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        
-        /* Tamamen Gri Tasarıma Uygun Sabitlenmiş Rozet */
-        .pinned-badge { position: absolute; top: -3px; right: 3px; font-size: 9px; color: var(--text-main); background: var(--bg-hover); border-radius: 50%; width: 15px; height: 15px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); }
-
-        /* Kısayol Aksiyon Menüsü Modalı */
-        #shortcut-menu-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.85); z-index: 80; backdrop-filter: blur(10px); align-items: center; justify-content: center; padding: 20px; }
-        .shortcut-menu-box { background-color: var(--bg-surface); border: 1px solid var(--border); border-radius: 14px; width: 100%; max-width: 300px; display: flex; flex-direction: column; overflow: hidden; padding: 6px 0; }
-        .shortcut-menu-item { padding: 12px 18px; color: var(--text-main); font-size: 14px; cursor: pointer; background: none; border: none; text-align: left; transition: 0.15s; }
-        .shortcut-menu-item:hover { background-color: var(--bg-hover); }
-        .shortcut-menu-item.danger { color: #FF453A; }
-
-        /* Üç Nokta Seçenekler Menüsü */
-        #dropdown-menu {
-            display: none; position: absolute; top: 56px; right: 10px; background-color: var(--bg-surface); 
+        /* Menüler ve Modallar (Boşluğa tıklandığında kapanma özellikli) */
+        .dropdown-menu {
+            display: none; position: absolute; background-color: var(--bg-surface); 
             border: 1px solid var(--border); border-radius: 12px; flex-direction: column; width: 220px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-Index: 50; padding: 6px 0;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 50; padding: 6px 0;
         }
+        #dropdown-menu { top: 56px; right: 10px; width: 230px; }
+        #tabs-menu { top: 56px; right: 40px; width: 200px; }
+
         .menu-item {
             padding: 11px 14px; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 12px; font-size: 13px;
             background: none; border: none; width: 100%; text-align: left; transition: 0.15s;
@@ -74,10 +58,35 @@
         .menu-item:hover svg { stroke: var(--text-main); }
         .menu-divider { height: 1px; background-color: var(--border); margin: 4px 0; }
 
+        /* Ana Sayfa Kısayollar Bloğu */
+        #home-content { flex-grow: 1; padding: 24px 16px; overflow-y: auto; display: flex; flex-direction: column; background: var(--bg-base); }
+        .shortcuts-title { font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
+        .shortcut-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 20px; }
+        .shortcut-item { display: flex; flex-direction: column; align-items: center; cursor: pointer; position: relative; }
+        .shortcut-icon { width: 56px; height: 56px; background-color: var(--bg-surface); border: 1px solid var(--border); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; color: var(--text-main); transition: 0.2s; }
+        .shortcut-item:hover .shortcut-icon { border-color: var(--text-main); background-color: var(--bg-hover); }
+        .shortcut-name { margin-top: 6px; font-size: 11px; color: var(--text-muted); width: 100%; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .pinned-badge { position: absolute; top: -3px; right: 3px; font-size: 9px; color: var(--text-main); background: var(--bg-hover); border-radius: 50%; width: 15px; height: 15px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); }
+
+        /* Sekme Yöneticisi Modal (Kaydırarak kapatma & Seçim modlu) */
+        #tabs-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.88); z-index: 60; backdrop-filter: blur(10px); flex-direction: column; padding: 16px; box-sizing: border-box; }
+        .tabs-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; font-size: 17px; font-weight: 500; color: var(--text-main); }
+        .tab-grid { display: flex; flex-wrap: wrap; gap: 10px; overflow-y: auto; flex-grow: 1; }
+        .tab-card { background-color: var(--bg-surface); border: 1px solid var(--border); border-radius: 10px; width: calc(50% - 5px); height: 120px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; position: relative; transition: transform 0.2s; }
+        .tab-card.active { border-color: var(--text-main); }
+        .tab-card span { font-size: 12px; text-align: center; padding: 8px; word-break: break-all; color: var(--text-muted); }
+        .tab-card input[type="checkbox"] { position: absolute; top: 8px; left: 8px; display: none; }
+        .tab-card.select-mode input[type="checkbox"] { display: block; }
+        .close-tab-btn { position: absolute; top: 5px; right: 5px; background: var(--bg-hover); color: var(--text-muted); border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 10px; }
+
+        /* Seçim Modu Alt Barı */
+        #selection-toolbar { display: none; position: absolute; bottom: 0; left: 0; width: 100%; background: var(--bg-surface); border-top: 1px solid var(--border); padding: 12px 20px; justify-content: space-around; z-index: 65; }
+        .sel-btn { background: none; border: none; color: var(--text-main); font-size: 13px; cursor: pointer; padding: 6px 12px; border-radius: 6px; background-color: var(--bg-hover); }
+
         /* Ayarlar Modalı */
-        #settings-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.9); z-index: 70; backdrop-filter: blur(10px); flex-direction: column; padding: 20px; box-sizing: border-box; overflow-y: auto; }
+        #settings-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.92); z-index: 70; backdrop-filter: blur(10px); flex-direction: column; padding: 20px; box-sizing: border-box; overflow-y: auto; }
         .settings-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; font-size: 18px; font-weight: 500; color: var(--text-main); }
-        .setting-section-title { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin: 12px 0 6px 0; }
+        .setting-section-title { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin: 16px 0 6px 0; }
         .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text-main); }
         .setting-desc { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
         .setting-select, .setting-input { background: var(--bg-surface); color: var(--text-main); border: 1px solid var(--border); padding: 5px 10px; border-radius: 6px; outline: none; font-size: 12px; max-width: 150px; }
@@ -90,14 +99,11 @@
         input:checked + .slider { background-color: #555; }
         input:checked + .slider:before { transform: translateX(18px); }
 
-        /* Sekme Modalı */
-        #tabs-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.85); z-index: 60; backdrop-filter: blur(10px); flex-direction: column; padding: 16px; box-sizing: border-box; }
-        .tabs-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; font-size: 17px; font-weight: 500; color: var(--text-main); }
-        .tab-grid { display: flex; flex-wrap: wrap; gap: 10px; overflow-y: auto; }
-        .tab-card { background-color: var(--bg-surface); border: 1px solid var(--border); border-radius: 10px; width: calc(50% - 5px); height: 120px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; position: relative; }
-        .tab-card.active { border-color: var(--text-main); }
-        .tab-card span { font-size: 12px; text-align: center; padding: 8px; word-break: break-all; color: var(--text-muted); }
-        .close-tab-btn { position: absolute; top: 5px; right: 5px; background: var(--bg-hover); color: var(--text-muted); border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 10px; }
+        #shortcut-menu-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.85); z-index: 80; backdrop-filter: blur(10px); align-items: center; justify-content: center; padding: 20px; }
+        .shortcut-menu-box { background-color: var(--bg-surface); border: 1px solid var(--border); border-radius: 14px; width: 100%; max-width: 300px; display: flex; flex-direction: column; overflow: hidden; padding: 6px 0; }
+        .shortcut-menu-item { padding: 12px 18px; color: var(--text-main); font-size: 14px; cursor: pointer; background: none; border: none; text-align: left; transition: 0.15s; }
+        .shortcut-menu-item:hover { background-color: var(--bg-hover); }
+        .shortcut-menu-item.danger { color: #FF453A; }
 
         #toast { visibility: hidden; min-width: 180px; background-color: var(--bg-surface); border: 1px solid var(--border); color: var(--text-main); text-align: center; border-radius: 10px; padding: 8px 14px; position: fixed; z-index: 100; left: 50%; bottom: 24px; transform: translateX(-50%); font-size: 12px; opacity: 0; transition: opacity 0.3s; }
         #toast.show { visibility: visible; opacity: 1; }
@@ -116,52 +122,42 @@
             <svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
         </button>
         <div id="tab-counter-btn" title="Sekmeler">1</div>
+        <button class="icon-btn" id="tabs-menu-btn" title="Sekme Seçenekleri">
+            <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+        </button>
         <button class="icon-btn" id="menu-btn" title="Menü">
             <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
         </button>
     </div> 
 
     <!-- Üç Nokta Seçenekler Menüsü -->
-    <div id="dropdown-menu">
-        <button class="menu-item" id="m-refresh">
-            <svg viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.59-9.21l5.67-1.36"></path></svg> Sayfayı Yenile
-        </button>
-        <button class="menu-item" id="m-back">
-            <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg> Geri
-        </button>
-        <button class="menu-item" id="m-forward">
-            <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg> İleri
-        </button>
+    <div id="dropdown-menu" class="dropdown-menu">
+        <button class="menu-item" id="m-refresh"><svg viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.59-9.21l5.67-1.36"></path></svg> Sayfayı Yenile</button>
+        <button class="menu-item" id="m-newtab"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> Yeni Sekme</button>
+        <button class="menu-item" id="m-incognito"><svg viewBox="0 0 24 24"><path d="M2 12h20M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M15 4l-3 4-3-4"></path></svg> Yeni Gizli Sekme</button>
         <div class="menu-divider"></div>
-        <button class="menu-item" id="m-share">
-            <svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13"></path></svg> Paylaş
-        </button>
-        <button class="menu-item" id="m-save">
-            <svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg> Sayfayı Kaydet
-        </button>
+        <button class="menu-item" id="m-save"><svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg> Sayfayı Kaydet</button>
+        <button class="menu-item" id="m-forward"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg> İleri</button>
+        <button class="menu-item" id="m-back"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg> Geri</button>
+        <button class="menu-item" id="m-history"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Geçmiş</button>
+        <button class="menu-item" id="m-downloads"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"></path></svg> İndirilenler</button>
+        <button class="menu-item" id="m-share"><svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13"></path></svg> Paylaş</button>
+        <button class="menu-item" id="m-print"><svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg> Yazdır</button>
+        <button class="menu-item" id="m-find"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg> Sayfada Bul</button>
+        <button class="menu-item" id="m-desktop"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg> Masaüstü Görünümü</button>
         <div class="menu-divider"></div>
-        <button class="menu-item" id="m-newtab">
-            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> Yeni Sekme
-        </button>
-        <button class="menu-item" id="m-incognito">
-            <svg viewBox="0 0 24 24"><path d="M2 12h20M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M15 4l-3 4-3-4"></path></svg> Yeni Gizli Sekme
-        </button>
-        <div class="menu-divider"></div>
-        <button class="menu-item" id="m-history">
-            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Geçmiş
-        </button>
-        <button class="menu-item" id="m-downloads">
-            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"></path></svg> İndirilenler
-        </button>
-        <div class="menu-divider"></div>
-        <button class="menu-item" id="m-settings">
-            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l-.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg> Ayarlar
-        </button>
+        <button class="menu-item" id="m-settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l-.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06-.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg> Ayarlar</button>
     </div> 
+
+    <!-- Sekme Yöneticisi Yan Menüsü -->
+    <div id="tabs-menu" class="dropdown-menu">
+        <button class="menu-item" id="tm-close-all">Tüm sekmeleri kapat</button>
+        <button class="menu-item" id="tm-select-mode">Seç</button>
+    </div>
 
     <!-- Kısayol Aksiyon Menüsü Modalı -->
     <div id="shortcut-menu-modal">
-        <div class="shortcut-menu-box" id="shortcut-menu-box">
+        <div class="shortcut-menu-box">
             <button class="shortcut-menu-item" id="sm-newtab">Yeni sekmede aç</button>
             <button class="shortcut-menu-item" id="sm-incognito">Gizli sekmede aç</button>
             <button class="shortcut-menu-item" id="sm-pin">Kısayolu sabitle</button>
@@ -173,64 +169,104 @@
     <div id="settings-modal">
         <div class="settings-header">Ayarlar <span id="close-settings" style="cursor:pointer; font-size:22px; color:var(--text-muted);">×</span></div>
         
-        <div class="setting-section-title">Arama Motoru</div>
+        <div class="setting-section-title">Genel</div>
         <div class="setting-row">
             <span>Varsayılan Arama Motoru</span>
             <select id="search-engine-select" class="setting-select">
-                <option value="https://www.google.com/search?q=">Google</option>
-                <option value="https://duckduckgo.com/?q=">DuckDuckGo</option>
-                <option value="https://search.brave.com/search?q=">Brave Search</option>
-                <option value="https://www.bing.com/search?q=">Bing</option>
-                <option value="https://search.yahoo.com/search?p=">Yahoo</option>
+                <option value="https://www.google.com/search?q=">Google (Varsayılan)</option>
                 <option value="https://yandex.com/search/?text=">Yandex</option>
-                <option value="https://qwant.com/?q=">Qwant</option>
-                <option value="https://www.startpage.com/sp/search?query=">Startpage</option>
+                <option value="https://duckduckgo.com/?q=">DuckDuckGo</option>
+                <option value="https://www.bing.com/search?q=">Bing</option>
+                <option value="https://brox.com/search?q=">Brox</option>
                 <option value="custom">Manuel Ekle...</option>
             </select>
         </div>
         <div class="setting-row" id="custom-engine-row" style="display:none;">
             <div>
                 <div>Özel Arama URL Yapısı</div>
-                <div class="setting-desc">Örn: https://www.youtube.com/results?search_query=</div>
+                <div class="setting-desc">Örn: https://site.com/search?q=</div>
             </div>
             <input type="text" id="custom-engine-input" class="setting-input" placeholder="URL şablonu yazın">
         </div>
 
+        <div class="setting-row">
+            <span>Karşılama Ekranı Seçenekleri</span>
+            <select id="home-screen-select" class="setting-select">
+                <option value="shortcuts">Kısayol ekranı</option>
+                <option value="url">URL</option>
+            </select>
+        </div>
+        <div class="setting-row">
+            <span>Yeni Sekme Sayfası</span>
+            <select id="new-tab-page-select" class="setting-select">
+                <option value="shortcuts">Kısayol ekranı</option>
+                <option value="url">URL</option>
+            </select>
+        </div>
+
         <div class="setting-section-title">Görünüm</div>
         <div class="setting-row">
-            <span>Araç Çubuğunda Ana Sayfa Butonu</span>
-            <label class="switch"><input type="checkbox" id="home-btn-toggle"><span class="slider"></span></label>
+            <div>
+                <div>Siteleri Karanlık Temaya Zorla</div>
+            </div>
+            <label class="switch"><input type="checkbox" id="dark-mode-toggle"><span class="slider"></span></label>
         </div>
         <div class="setting-row">
             <div>
-                <div>Gece Modu</div>
-                <div class="setting-desc">Web içeriği için koyu modu zorla</div>
+                <div>Web Sitesinin Yakınlaştırmasını Önlemeyi Yok Say</div>
             </div>
-            <label class="switch"><input type="checkbox" id="dark-mode-toggle"><span class="slider"></span></label>
+            <label class="switch"><input type="checkbox" id="zoom-ignore-toggle"><span class="slider"></span></label>
+        </div>
+        <div class="setting-row">
+            <div>
+                <div>Web Sayfalarının Basitleştirilmiş Görünümü</div>
+            </div>
+            <label class="switch"><input type="checkbox" id="simplified-view-toggle"><span class="slider"></span></label>
+        </div>
+        <div class="setting-row">
+            <span>Görüntüleme Dili</span>
+            <select id="display-lang-select" class="setting-select">
+                <option value="tr">Türkçe</option>
+                <option value="en">English</option>
+            </select>
         </div>
 
         <div class="setting-section-title">Gizlilik & Güvenlik</div>
         <div class="setting-row">
             <div>
-                <div>Ekran Görüntüsü / Kayıt Koruması</div>
-                <div class="setting-desc">Brox açıkken ekran görüntüsü ve izlemeyi engelle</div>
+                <div>Uygulama Açıkken Ekran Görüntüsü / Kaydı Önle</div>
             </div>
-            <label class="switch"><input type="checkbox" id="screenshot-toggle" checked><span class="slider"></span></label>
+            <label class="switch"><input type="checkbox" id="screenshot-toggle"><span class="slider"></span></label>
         </div>
         <div class="setting-row">
-            <span>Güvenli DNS Kullan</span>
+            <span>Güvenli DNS</span>
             <select id="dns-select" class="setting-select">
                 <option value="off">Kapalı</option>
-                <option value="cloudflare">Cloudflare (1.1.1.1)</option>
-                <option value="google">Google (8.8.8.8)</option>
+                <option value="google">Google</option>
+                <option value="opendns">OpenDNS</option>
+                <option value="cloudflare">Cloudflare</option>
+                <option value="family">Family</option>
+            </select>
+        </div>
+        <div class="setting-row">
+            <div>
+                <div>Uygulamadan Çıkıldığında Açık Sekmeler</div>
+            </div>
+            <select id="exit-tabs-select" class="setting-select">
+                <option value="close">Kapansın</option>
+                <option value="preserve">Korunsun</option>
             </select>
         </div>
     </div>
 
-    <!-- Sekme Modalı -->
+    <!-- Sekme Yöneticisi Modalı -->
     <div id="tabs-modal">
         <div class="tabs-header">Açık Sekmeler <span id="close-tabs-modal" style="cursor:pointer; font-size:20px; color:var(--text-muted);">×</span></div>
         <div class="tab-grid" id="tab-grid-container"></div>
+        <div id="selection-toolbar">
+            <button class="sel-btn" id="sel-close">Seçilen sekmeleri kapat</button>
+            <button class="sel-btn" id="sel-incognito">Gizli sekme olarak aç</button>
+        </div>
     </div> 
 
     <!-- Ana Sayfa Kısayollar Bloğu -->
@@ -239,7 +275,6 @@
         <div class="shortcut-grid" id="shortcut-grid"></div>
     </div>
 
-    <div id="pull-to-refresh"><div class="refresh-icon">↻</div></div>
     <div id="toast"></div> 
 
     <script>
@@ -249,24 +284,42 @@
         const addTabBtn = document.getElementById('add-tab-btn');
         const tabCounterBtn = document.getElementById('tab-counter-btn');
         const menuBtn = document.getElementById('menu-btn');
+        const tabsMenuBtn = document.getElementById('tabs-menu-btn');
         const dropdownMenu = document.getElementById('dropdown-menu');
+        const tabsMenu = document.getElementById('tabs-menu');
         const tabsModal = document.getElementById('tabs-modal');
         const settingsModal = document.getElementById('settings-modal');
         const shortcutModal = document.getElementById('shortcut-menu-modal');
         const shortcutGrid = document.getElementById('shortcut-grid');
+        const selectionToolbar = document.getElementById('selection-toolbar');
 
         const searchEngineSelect = document.getElementById('search-engine-select');
         const customEngineRow = document.getElementById('custom-engine-row');
         const customEngineInput = document.getElementById('custom-engine-input');
-        const homeBtnToggle = document.getElementById('home-btn-toggle');
+        const homeScreenSelect = document.getElementById('home-screen-select');
+        const newTabPageSelect = document.getElementById('new-tab-page-select');
         const darkModeToggle = document.getElementById('dark-mode-toggle');
         const screenshotToggle = document.getElementById('screenshot-toggle');
         const dnsSelect = document.getElementById('dns-select');
+        const exitTabsSelect = document.getElementById('exit-tabs-select');
 
         function showToast(msg) {
             const t = document.getElementById("toast"); t.innerText = msg;
             t.classList.add("show"); setTimeout(() => t.classList.remove("show"), 2500);
         } 
+
+        // Menüleri Boşluğa Tıklayınca Kapatma (Evrensel Listener)
+        window.onclick = (e) => {
+            if (!dropdownMenu.contains(e.target) && e.target !== menuBtn && !menuBtn.contains(e.target)) {
+                dropdownMenu.style.display = 'none';
+            }
+            if (!tabsMenu.contains(e.target) && e.target !== tabsMenuBtn && !tabsMenuBtn.contains(e.target)) {
+                tabsMenu.style.display = 'none';
+            }
+        };
+
+        menuBtn.onclick = (e) => { e.stopPropagation(); dropdownMenu.style.display = dropdownMenu.style.display === 'flex' ? 'none' : 'flex'; tabsMenu.style.display = 'none'; };
+        tabsMenuBtn.onclick = (e) => { e.stopPropagation(); tabsMenu.style.display = tabsMenu.style.display === 'flex' ? 'none' : 'flex'; dropdownMenu.style.display = 'none'; };
 
         // Kısayollar Yönetimi
         let shortcuts = JSON.parse(localStorage.getItem('brox_shortcuts')) || [
@@ -276,6 +329,7 @@
         ];
 
         let selectedShortcutIndex = null;
+        let isSelectMode = false;
 
         function renderShortcuts() {
             shortcutGrid.innerHTML = '';
@@ -361,15 +415,7 @@
         };
 
         let savedEngine = localStorage.getItem('brox_engine') || 'https://www.google.com/search?q=';
-        if(['https://www.google.com/search?q=', 'https://duckduckgo.com/?q=', 'https://search.brave.com/search?q=', 'https://www.bing.com/search?q=', 'https://search.yahoo.com/search?p=', 'https://yandex.com/search/?text=', 'https://qwant.com/?q=', 'https://www.startpage.com/sp/search?query='].includes(savedEngine)) {
-            searchEngineSelect.value = savedEngine;
-            customEngineRow.style.display = 'none';
-        } else {
-            searchEngineSelect.value = 'custom';
-            customEngineRow.style.display = 'flex';
-            customEngineInput.value = savedEngine;
-        }
-
+        searchEngineSelect.value = savedEngine;
         searchEngineSelect.onchange = (e) => {
             if(e.target.value === 'custom') {
                 customEngineRow.style.display = 'flex';
@@ -381,31 +427,6 @@
             showToast("Arama motoru güncellendi");
         };
 
-        customEngineInput.oninput = (e) => {
-            localStorage.setItem('brox_engine', e.target.value);
-        };
-
-        let showHomeBtn = localStorage.getItem('brox_show_home') === 'true';
-        homeBtnToggle.checked = showHomeBtn;
-        homeToolbarBtn.style.display = showHomeBtn ? 'flex' : 'none';
-        homeBtnToggle.onchange = (e) => { localStorage.setItem('brox_show_home', e.target.checked); homeToolbarBtn.style.display = e.target.checked ? 'flex' : 'none'; };
-
-        darkModeToggle.checked = localStorage.getItem('brox_dark') === 'true';
-        darkModeToggle.onchange = (e) => { localStorage.setItem('brox_dark', e.target.checked); showToast("Koyu mod ayarlandı"); };
-
-        let screenshotProtect = localStorage.getItem('brox_screenshot_protect') !== 'false';
-        screenshotToggle.checked = screenshotProtect;
-        screenshotToggle.onchange = (e) => { 
-            localStorage.setItem('brox_screenshot_protect', e.target.checked); 
-            if (window.BroxNative && window.BroxNative.setScreenProtection) {
-                window.BroxNative.setScreenProtection(e.target.checked);
-            }
-            showToast("Ekran koruma ayarı güncellendi"); 
-        };
-
-        dnsSelect.value = localStorage.getItem('brox_dns') || 'off';
-        dnsSelect.onchange = (e) => { localStorage.setItem('brox_dns', e.target.value); showToast("Güvenli DNS güncellendi"); };
-
         let tabs = [{ id: 1, url: '', title: 'Yeni Sekme', incognito: false }];
         let activeTabId = 1;
 
@@ -415,12 +436,78 @@
             container.innerHTML = '';
             tabs.forEach(tab => {
                 const card = document.createElement('div');
-                card.className = `tab-card ${tab.id === activeTabId ? 'active' : ''}`;
-                card.innerHTML = `<span>${tab.title} ${tab.incognito ? '🕵️' : ''}</span><div class="close-tab-btn" onclick="event.stopPropagation(); closeTab(${tab.id})">✖</div>`;
-                card.onclick = () => switchTab(tab.id);
+                card.className = `tab-card ${tab.id === activeTabId ? 'active' : ''} ${isSelectMode ? 'select-mode' : ''}`;
+                card.innerHTML = `
+                    <input type="checkbox" data-id="${tab.id}">
+                    <span>${tab.title} ${tab.incognito ? '🕵️' : ''}</span>
+                    <div class="close-tab-btn" onclick="event.stopPropagation(); closeTab(${tab.id})">✖</div>
+                `;
+                
+                // Sağa / Sola kaydırarak kapatma (Swipe to close)
+                let startX = 0;
+                card.ontouchstart = (e) => { startX = e.touches[0].clientX; };
+                card.ontouchmove = (e) => {
+                    let diff = e.touches[0].clientX - startX;
+                    card.style.transform = `translateX(${diff}px)`;
+                    if(Math.abs(diff) > 120) {
+                        closeTab(tab.id);
+                    }
+                };
+                card.ontouchend = () => { card.style.transform = 'translateX(0)'; };
+
+                card.onclick = () => {
+                    if(isSelectMode) {
+                        let chk = card.querySelector('input');
+                        chk.checked = !chk.checked;
+                    } else {
+                        switchTab(tab.id);
+                    }
+                };
                 container.appendChild(card);
             });
+
+            selectionToolbar.style.display = isSelectMode ? 'flex' : 'none';
         }
+
+        // Sekme Yöneticisi Menü Aksiyonları
+        document.getElementById('tm-close-all').onclick = () => {
+            tabs = [{ id: Date.now(), url: '', title: 'Yeni Sekme', incognito: false }];
+            switchTab(tabs[0].id);
+            tabsMenu.style.display = 'none';
+            showToast("Tüm sekmeler kapatıldı");
+        };
+
+        document.getElementById('tm-select-mode').onclick = () => {
+            isSelectMode = true;
+            tabsMenu.style.display = 'none';
+            tabsModal.style.display = 'flex';
+            renderTabs();
+        };
+
+        // Seçim Modu İşlemleri
+        document.getElementById('sel-close').onclick = () => {
+            let checkedBoxes = document.querySelectorAll('.tab-card input[type="checkbox"]:checked');
+            let idsToRemove = Array.from(checkedBoxes).map(ch => Number(ch.dataset.id));
+            tabs = tabs.filter(t => !idsToRemove.includes(t.id));
+            if(tabs.length === 0) createNewTab();
+            isSelectMode = false;
+            renderTabs();
+            showToast("Seçilen sekmeler kapatıldı");
+        };
+
+        document.getElementById('sel-incognito').onclick = () => {
+            let checkedBoxes = document.querySelectorAll('.tab-card input[type="checkbox"]:checked');
+            checkedBoxes.forEach(ch => {
+                let t = tabs.find(item => item.id === Number(ch.dataset.id));
+                if(t && t.url) {
+                    let newId = Date.now() + Math.random();
+                    tabs.push({ id: newId, url: t.url, title: t.title, incognito: true });
+                }
+            });
+            isSelectMode = false;
+            renderTabs();
+            showToast("Seçilenler gizli sekme olarak açıldı");
+        };
 
         function processAndLoad(inputVal) {
             if(!inputVal) return;
@@ -473,6 +560,7 @@
             const tab = tabs.find(t => t.id === id);
             urlInput.value = tab.url;
             tabsModal.style.display = 'none';
+            isSelectMode = false;
             renderTabs();
             
             if(tab.incognito) document.body.classList.add('incognito');
@@ -493,10 +581,7 @@
             renderTabs();
         }
 
-        menuBtn.onclick = (e) => { e.stopPropagation(); dropdownMenu.style.display = dropdownMenu.style.display === 'flex' ? 'none' : 'flex'; };
-        document.onclick = () => { dropdownMenu.style.display = 'none'; };
-        dropdownMenu.onclick = (e) => { e.stopPropagation(); };
-
+        // Menü buton bağlamları
         document.getElementById('m-refresh').onclick = () => { dropdownMenu.style.display = 'none'; if (window.BroxNative) window.BroxNative.reload(); showToast("Sayfa yenileniyor"); };
         document.getElementById('m-back').onclick = () => { dropdownMenu.style.display = 'none'; if (window.BroxNative) window.BroxNative.goBack(); };
         document.getElementById('m-forward').onclick = () => { dropdownMenu.style.display = 'none'; if (window.BroxNative) window.BroxNative.goForward(); };
@@ -504,16 +589,19 @@
         document.getElementById('m-save').onclick = () => { dropdownMenu.style.display = 'none'; showToast("Yer işaretlerine eklendi"); };
         document.getElementById('m-newtab').onclick = () => { dropdownMenu.style.display = 'none'; createNewTab(false); };
         document.getElementById('m-incognito').onclick = () => { dropdownMenu.style.display = 'none'; createNewTab(true); showToast("Gizli sekme açıldı"); };
-        document.getElementById('m-history').onclick = () => { dropdownMenu.style.display = 'none'; showToast("Geçmiş yakında"); };
-        document.getElementById('m-downloads').onclick = () => { dropdownMenu.style.display = 'none'; showToast("İndirilenler boş"); };
+        document.getElementById('m-history').onclick = () => { dropdownMenu.style.display = 'none'; showToast("Geçmiş"); };
+        document.getElementById('m-downloads').onclick = () => { dropdownMenu.style.display = 'none'; showToast("İndirilenler"); };
+        document.getElementById('m-print').onclick = () => { dropdownMenu.style.display = 'none'; showToast("Yazdırılıyor"); };
+        document.getElementById('m-find').onclick = () => { dropdownMenu.style.display = 'none'; showToast("Sayfada bul"); };
+        document.getElementById('m-desktop').onclick = () => { dropdownMenu.style.display = 'none'; showToast("Masaüstü görünümü"); };
         document.getElementById('m-settings').onclick = () => { dropdownMenu.style.display = 'none'; settingsModal.style.display = 'flex'; };
         document.getElementById('close-settings').onclick = () => { settingsModal.style.display = 'none'; };
 
         urlInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { urlInput.blur(); processAndLoad(urlInput.value); } });
         
         addTabBtn.onclick = () => createNewTab(false);
-        tabCounterBtn.onclick = () => { tabsModal.style.display = 'flex'; renderTabs(); };
-        document.getElementById('close-tabs-modal').onclick = () => { tabsModal.style.display = 'none'; };
+        tabCounterBtn.onclick = () => { tabsModal.style.display = 'flex'; isSelectMode = false; renderTabs(); };
+        document.getElementById('close-tabs-modal').onclick = () => { tabsModal.style.display = 'none'; isSelectMode = false; };
 
         homeToolbarBtn.onclick = () => {
             if (window.BroxNative && window.BroxNative.hideWebView) window.BroxNative.hideWebView();
