@@ -20,8 +20,8 @@
 
         /* Toolbar */
         #toolbar {
-            display: flex; align-items: center; padding: 0 12px; height: 56px; gap: 8px;
-            background-color: var(--bg-base); border-bottom: 1px solid var(--border); z-index: 20;
+            display: flex; align-items: center; padding: 0 10px; height: 56px; gap: 12px;
+            background-color: var(--bg-base); border-bottom: 1px solid var(--border); z-index: 20; flex-shrink: 0;
         }
         body.incognito #toolbar { background-color: var(--incognito); }
 
@@ -33,18 +33,30 @@
         #url-input { flex-grow: 1; background: transparent; border: none; color: var(--text-main); font-size: 15px; outline: none; width: 100%; -webkit-user-select: auto; user-select: auto; }
         #url-input::placeholder { color: var(--text-muted); }
 
-        #search-btn {
-            background-color: var(--bg-surface); color: var(--text-main); border: 1px solid var(--border); padding: 0 16px; height: 40px; border-radius: 10px; font-size: 14px; font-weight: 500; cursor: pointer; transition: 0.2s;
-        }
-        #search-btn:hover { background-color: var(--bg-hover); }
-
-        .icon-btn { background: none; border: none; color: var(--text-main); display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; cursor: pointer; border-radius: 10px; }
+        .icon-btn { background: none; border: none; color: var(--text-main); display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; cursor: pointer; border-radius: 10px; flex-shrink: 0; }
         .icon-btn:hover { background-color: var(--bg-hover); }
         .icon-btn svg { width: 20px; height: 20px; stroke-width: 1.8; stroke: var(--text-muted); } 
 
-        #tab-counter-btn { border: 2px solid var(--text-muted); border-radius: 8px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: var(--text-muted); cursor: pointer; } 
+        #tab-counter-btn { border: 2px solid var(--text-muted); border-radius: 8px; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: var(--text-muted); cursor: pointer; flex-shrink: 0; } 
 
-        /* Üç Nokta Menü */
+        /* Ana Sayfa & Kısayollar Bloğu */
+        #home-content { flex-grow: 1; padding: 30px 20px; overflow-y: auto; display: flex; flex-direction: column; background: var(--bg-base); }
+        .shortcuts-title { font-size: 13px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 20px; }
+        .shortcut-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 24px; }
+        .shortcut-item { display: flex; flex-direction: column; align-items: center; cursor: pointer; position: relative; }
+        .shortcut-icon { width: 60px; height: 60px; background-color: var(--bg-surface); border: 1px solid var(--border); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: bold; color: var(--text-main); transition: 0.2s; }
+        .shortcut-item:hover .shortcut-icon { border-color: var(--text-main); background-color: var(--bg-hover); }
+        .shortcut-name { margin-top: 8px; font-size: 12px; color: var(--text-muted); width: 100%; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .pinned-badge { position: absolute; top: -4px; right: 4px; font-size: 10px; color: var(--text-main); background: var(--bg-hover); border-radius: 50%; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); }
+
+        /* Kısayol Aksiyon Modalı / Menüsü */
+        #shortcut-menu-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.85); z-index: 80; backdrop-filter: blur(10px); align-items: center; justify-content: center; padding: 20px; }
+        .shortcut-menu-box { background-color: var(--bg-surface); border: 1px solid var(--border); border-radius: 16px; width: 100%; max-width: 320px; display: flex; flex-direction: column; overflow: hidden; padding: 8px 0; }
+        .shortcut-menu-item { padding: 14px 20px; color: var(--text-main); font-size: 15px; cursor: pointer; background: none; border: none; text-align: left; transition: 0.15s; }
+        .shortcut-menu-item:hover { background-color: var(--bg-hover); }
+        .shortcut-menu-item.danger { color: #FF453A; }
+
+        /* Üç Nokta Seçenekler Menüsü */
         #dropdown-menu {
             display: none; position: absolute; top: 60px; right: 12px; background-color: var(--bg-surface); 
             border: 1px solid var(--border); border-radius: 14px; flex-direction: column; width: 240px;
@@ -75,14 +87,6 @@
         input:checked + .slider { background-color: #555; }
         input:checked + .slider:before { transform: translateX(20px); }
 
-        /* Brox Varsayılan Arama Sayfası */
-        #home-content { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--bg-base); padding: 20px; }
-        .center-search-box { display: flex; flex-direction: column; width: 100%; max-width: 420px; gap: 14px; align-items: center; }
-        .center-input { width: 100%; height: 48px; padding: 0 18px; font-size: 16px; background-color: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px; color: var(--text-main); outline: none; text-align: center; }
-        .center-input::placeholder { color: var(--text-muted); }
-        .center-btn { width: 120px; height: 42px; background-color: var(--bg-surface); border: 1px solid var(--border); border-radius: 10px; color: var(--text-main); font-size: 15px; font-weight: 500; cursor: pointer; transition: 0.2s; }
-        .center-btn:hover { background-color: var(--bg-hover); }
-
         /* Sekme Modalı */
         #tabs-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.85); z-index: 60; backdrop-filter: blur(10px); flex-direction: column; padding: 20px; box-sizing: border-box; }
         .tabs-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; font-size: 18px; font-weight: 500; color: var(--text-main); }
@@ -105,12 +109,11 @@
         <div class="input-container">
             <input type="url" id="url-input" placeholder="Arama yapın veya URL girin...">
         </div>
-        <button id="search-btn">Ara</button>
-        <button class="icon-btn" id="add-tab-btn" title="Yeni Sekme">
+        <button class="icon-btn" id="add-tab-btn" title="Yeni Sekme" style="margin-left: 6px;">
             <svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
         </button>
-        <div id="tab-counter-btn" title="Sekmeler">1</div>
-        <button class="icon-btn" id="menu-btn" title="Menü">
+        <div id="tab-counter-btn" title="Sekmeler" style="margin-left: 4px;">1</div>
+        <button class="icon-btn" id="menu-btn" title="Menü" style="margin-left: 6px;">
             <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
         </button>
     </div> 
@@ -152,6 +155,16 @@
             <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg> Ayarlar
         </button>
     </div> 
+
+    <!-- Kısayol Aksiyon Menüsü Modalı -->
+    <div id="shortcut-menu-modal">
+        <div class="shortcut-menu-box" id="shortcut-menu-box">
+            <button class="shortcut-menu-item" id="sm-newtab">Yeni sekmede aç</button>
+            <button class="shortcut-menu-item" id="sm-incognito">Gizli sekmede aç</button>
+            <button class="shortcut-menu-item" id="sm-pin">Kısayolu sabitle</button>
+            <button class="shortcut-menu-item danger" id="sm-delete">Kısayolu sil</button>
+        </div>
+    </div>
 
     <!-- Ayarlar Modalı -->
     <div id="settings-modal">
@@ -211,27 +224,23 @@
         </div>
     </div>
 
+    <!-- Sekme Modalı -->
     <div id="tabs-modal">
         <div class="tabs-header">Açık Sekmeler <span id="close-tabs-modal" style="cursor:pointer; font-size:22px; color:var(--text-muted);">×</span></div>
         <div class="tab-grid" id="tab-grid-container"></div>
     </div> 
 
-    <!-- Brox Varsayılan Arama Sayfası -->
+    <!-- Ana Sayfa Kısayollar Bloğu -->
     <div id="home-content">
-        <div class="center-search-box">
-            <input type="text" id="center-url-input" class="center-input" placeholder="Google, YouTube veya URL yazın...">
-            <button id="center-search-btn" class="center-btn">Ara</button>
-        </div>
-    </div> 
+        <div class="shortcuts-title">Sık Kullanılanlar</div>
+        <div class="shortcut-grid" id="shortcut-grid"></div>
+    </div>
 
     <div id="pull-to-refresh"><div class="refresh-icon">↻</div></div>
     <div id="toast"></div> 
 
     <script>
         const urlInput = document.getElementById('url-input');
-        const searchBtn = document.getElementById('search-btn');
-        const centerUrlInput = document.getElementById('center-url-input');
-        const centerSearchBtn = document.getElementById('center-search-btn');
         const homeContent = document.getElementById('home-content');
         const homeToolbarBtn = document.getElementById('home-toolbar-btn');
         const addTabBtn = document.getElementById('add-tab-btn');
@@ -240,6 +249,8 @@
         const dropdownMenu = document.getElementById('dropdown-menu');
         const tabsModal = document.getElementById('tabs-modal');
         const settingsModal = document.getElementById('settings-modal');
+        const shortcutModal = document.getElementById('shortcut-menu-modal');
+        const shortcutGrid = document.getElementById('shortcut-grid');
 
         const searchEngineSelect = document.getElementById('search-engine-select');
         const customEngineRow = document.getElementById('custom-engine-row');
@@ -254,10 +265,102 @@
             t.classList.add("show"); setTimeout(() => t.classList.remove("show"), 2500);
         } 
 
-        // Arama Motoru Ayarları
+        // Kısayollar Yönetimi
+        let shortcuts = JSON.parse(localStorage.getItem('brox_shortcuts')) || [
+            { name: "Google", url: "https://www.google.com", pinned: true },
+            { name: "YouTube", url: "https://www.youtube.com", pinned: true },
+            { name: "Wikipedia", url: "https://www.wikipedia.org", pinned: false }
+        ];
+
+        let selectedShortcutIndex = null;
+
+        function renderShortcuts() {
+            shortcutGrid.innerHTML = '';
+            // Sabitlenenler öne gelsin
+            shortcuts.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
+
+            shortcuts.forEach((item, index) => {
+                let div = document.createElement('div');
+                div.className = 'shortcut-item';
+                div.innerHTML = `
+                    <div class="shortcut-icon">${item.name.charAt(0).toUpperCase()}</div>
+                    ${item.pinned ? '<div class="pinned-badge">📌</div>' : ''}
+                    <div class="shortcut-name">${item.name}</div>
+                `;
+                div.onclick = () => processAndLoad(item.url);
+                div.oncontextmenu = (e) => { e.preventDefault(); openShortcutMenu(index); };
+                
+                // Mobil uzun basma (long press) desteği
+                let pressTimer;
+                div.ontouchstart = () => { pressTimer = setTimeout(() => openShortcutMenu(index), 600); };
+                div.ontouchend = () => { clearTimeout(pressTimer); };
+
+                shortcutGrid.appendChild(div);
+            });
+
+            // Ekle Butonu (+)
+            let addDiv = document.createElement('div');
+            addDiv.className = 'shortcut-item';
+            addDiv.innerHTML = `<div class="shortcut-icon" style="font-size:26px;">+</div><div class="shortcut-name">Ekle</div>`;
+            addDiv.onclick = () => {
+                let name = prompt("Kısayol Adı:");
+                if (!name) return;
+                let url = prompt("URL (Örn: site.com):");
+                if (!url) return;
+                if (!url.startsWith('http')) url = 'https://' + url;
+                shortcuts.push({ name, url, pinned: false });
+                localStorage.setItem('brox_shortcuts', JSON.stringify(shortcuts));
+                renderShortcuts();
+                showToast("Kısayol eklendi");
+            };
+            shortcutGrid.appendChild(addDiv);
+        }
+
+        function openShortcutMenu(index) {
+            selectedShortcutIndex = index;
+            shortcutModal.style.display = 'flex';
+        }
+
+        shortcutModal.onclick = (e) => { if(e.target === shortcutModal) shortcutModal.style.display = 'none'; };
+
+        document.getElementById('sm-newtab').onclick = () => {
+            shortcutModal.style.display = 'none';
+            if(selectedShortcutIndex !== null) {
+                createNewTab(false);
+                processAndLoad(shortcuts[selectedShortcutIndex].url);
+            }
+        };
+
+        document.getElementById('sm-incognito').onclick = () => {
+            shortcutModal.style.display = 'none';
+            if(selectedShortcutIndex !== null) {
+                createNewTab(true);
+                processAndLoad(shortcuts[selectedShortcutIndex].url);
+                showToast("Gizli sekmede açıldı");
+            }
+        };
+
+        document.getElementById('sm-pin').onclick = () => {
+            shortcutModal.style.display = 'none';
+            if(selectedShortcutIndex !== null) {
+                shortcuts[selectedShortcutIndex].pinned = !shortcuts[selectedShortcutIndex].pinned;
+                localStorage.setItem('brox_shortcuts', JSON.stringify(shortcuts));
+                renderShortcuts();
+                showToast(shortcuts[selectedShortcutIndex].pinned ? "Kısayol sabitlendi" : "Sabitleme kaldırıldı");
+            }
+        };
+
+        document.getElementById('sm-delete').onclick = () => {
+            shortcutModal.style.display = 'none';
+            if(selectedShortcutIndex !== null) {
+                shortcuts.splice(selectedShortcutIndex, 1);
+                localStorage.setItem('brox_shortcuts', JSON.stringify(shortcuts));
+                renderShortcuts();
+                showToast("Kısayol silindi");
+            }
+        };
+
         let savedEngine = localStorage.getItem('brox_engine') || 'https://www.google.com/search?q=';
-        let customEngineVal = localStorage.getItem('brox_custom_engine') || '';
-        
         if(['https://www.google.com/search?q=', 'https://duckduckgo.com/?q=', 'https://search.brave.com/search?q=', 'https://www.bing.com/search?q=', 'https://search.yahoo.com/search?p=', 'https://yandex.com/search/?text=', 'https://qwant.com/?q=', 'https://www.startpage.com/sp/search?query='].includes(savedEngine)) {
             searchEngineSelect.value = savedEngine;
             customEngineRow.style.display = 'none';
@@ -334,7 +437,6 @@
             }
 
             urlInput.value = finalUrl;
-            centerUrlInput.value = '';
             homeContent.style.display = 'none';
 
             if (window.BroxNative && window.BroxNative.loadUrl) {
@@ -355,7 +457,7 @@
         window.resetBrowser = function() {
             homeContent.style.display = 'flex';
             urlInput.value = '';
-            centerUrlInput.value = '';
+            renderShortcuts();
             const t = tabs.find(t => t.id === activeTabId);
             if(t) { t.url = ''; t.title = t.incognito ? 'Gizli Sekme' : 'Yeni Sekme'; }
         };
@@ -370,7 +472,6 @@
             activeTabId = id;
             const tab = tabs.find(t => t.id === id);
             urlInput.value = tab.url;
-            centerUrlInput.value = '';
             tabsModal.style.display = 'none';
             renderTabs();
             
@@ -409,11 +510,7 @@
         document.getElementById('m-settings').onclick = () => { dropdownMenu.style.display = 'none'; settingsModal.style.display = 'flex'; };
         document.getElementById('close-settings').onclick = () => { settingsModal.style.display = 'none'; };
 
-        searchBtn.onclick = () => { urlInput.blur(); processAndLoad(urlInput.value); };
         urlInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { urlInput.blur(); processAndLoad(urlInput.value); } });
-
-        centerSearchBtn.onclick = () => { centerUrlInput.blur(); processAndLoad(centerUrlInput.value); };
-        centerUrlInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { centerUrlInput.blur(); processAndLoad(centerUrlInput.value); } });
         
         addTabBtn.onclick = () => createNewTab(false);
         tabCounterBtn.onclick = () => { tabsModal.style.display = 'flex'; renderTabs(); };
@@ -424,6 +521,7 @@
             window.resetBrowser();
         };
 
+        renderShortcuts();
         renderTabs();
     </script>
 </body>
