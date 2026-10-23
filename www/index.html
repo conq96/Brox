@@ -22,8 +22,14 @@
         #toolbar {
             display: flex; align-items: center; padding: 0 8px; height: 52px; gap: 6px;
             background-color: var(--bg-base); border-bottom: 1px solid var(--border); z-index: 20; flex-shrink: 0;
+            transition: transform 0.3s ease;
         }
         body.incognito #toolbar { background-color: var(--incognito); }
+        
+        /* Tam Ekran Modunda Araç Çubuğunu Gizleme Sınıfı */
+        body.fullscreen-mode #toolbar {
+            display: none !important;
+        }
 
         #home-toolbar-btn { display: none; }
 
@@ -128,6 +134,7 @@
     <!-- Üç Nokta Seçenekler Menüsü -->
     <div id="dropdown-menu" class="dropdown-menu">
         <button class="menu-item" id="m-refresh"><svg viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.59-9.21l5.67-1.36"></path></svg> Sayfayı Yenile</button>
+        <button class="menu-item" id="m-fullscreen"><svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg> Tam Ekran</button>
         <button class="menu-item" id="m-newtab"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> Yeni Sekme</button>
         <button class="menu-item" id="m-incognito"><svg viewBox="0 0 24 24"><path d="M2 12h20M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M15 4l-3 4-3-4"></path></svg> Yeni Gizli Sekme</button>
         <div class="menu-divider"></div>
@@ -141,10 +148,10 @@
         <button class="menu-item" id="m-find"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg> Sayfada Bul</button>
         <button class="menu-item" id="m-desktop"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg> Masaüstü Görünümü</button>
         <div class="menu-divider"></div>
-        <button class="menu-item" id="m-settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l-.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg> Ayarlar</button>
+        <button class="menu-item" id="m-settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l-.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06-.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg> Ayarlar</button>
     </div> 
 
-    <!-- Sekme Yöneticisi Açılır Menüsü (Çarpı işaretinin yanında) -->
+    <!-- Sekme Yöneticisi Açılır Menüsü -->
     <div id="tabs-menu" class="dropdown-menu">
         <button class="menu-item" id="tm-close-all">Tüm sekmeleri kapat</button>
         <button class="menu-item" id="tm-select-mode">Seç</button>
@@ -299,6 +306,8 @@
         const searchEngineSelect = document.getElementById('search-engine-select');
         const customEngineRow = document.getElementById('custom-engine-row');
         const customEngineInput = document.getElementById('custom-engine-input');
+
+        let isFullscreen = false;
 
         function showToast(msg) {
             const t = document.getElementById("toast"); t.innerText = msg;
@@ -527,7 +536,6 @@
             if(t) { t.url = finalUrl; t.title = finalUrl.split('/')[2] || finalUrl; }
         }
 
-        // Arama Sonuçlarındaki Link Tıklamalarını Yakalama ve Yönlendirme (Fix)
         window.handleLinkClick = function(clickedUrl) {
             if(clickedUrl) {
                 processAndLoad(clickedUrl);
@@ -581,9 +589,50 @@
             renderTabs();
         }
 
+        // Tam Ekran Özelliği
+        document.getElementById('m-fullscreen').onclick = () => {
+            dropdownMenu.style.display = 'none';
+            isFullscreen = true;
+            document.body.classList.add('fullscreen-mode');
+            if (window.BroxNative && window.BroxNative.setFullscreen) {
+                window.BroxNative.setFullscreen(true);
+            }
+            showToast("Tam ekran modu (Çıkmak için Geri tuşuna basın)");
+        };
+
+        // Geri Tuşu İşlevi (Tam ekrandan çıkış veya sayfa geçmişine gitme)
+        document.getElementById('m-back').onclick = () => { 
+            dropdownMenu.style.display = 'none'; 
+            if (isFullscreen) {
+                exitFullscreen();
+                return;
+            }
+            if (window.BroxNative && window.BroxNative.goBack) {
+                window.BroxNative.goBack();
+            } else {
+                window.history.back();
+            }
+        };
+
+        function exitFullscreen() {
+            isFullscreen = false;
+            document.body.classList.remove('fullscreen-mode');
+            if (window.BroxNative && window.BroxNative.setFullscreen) {
+                window.BroxNative.setFullscreen(false);
+            }
+            showToast("Tam ekrandan çıkıldı");
+        }
+
+        document.getElementById('m-forward').onclick = () => { 
+            dropdownMenu.style.display = 'none'; 
+            if (window.BroxNative && window.BroxNative.goForward) {
+                window.BroxNative.goForward();
+            } else {
+                window.history.forward();
+            }
+        };
+
         document.getElementById('m-refresh').onclick = () => { dropdownMenu.style.display = 'none'; if (window.BroxNative) window.BroxNative.reload(); showToast("Sayfa yenileniyor"); };
-        document.getElementById('m-back').onclick = () => { dropdownMenu.style.display = 'none'; if (window.BroxNative) window.BroxNative.goBack(); };
-        document.getElementById('m-forward').onclick = () => { dropdownMenu.style.display = 'none'; if (window.BroxNative) window.BroxNative.goForward(); };
         document.getElementById('m-share').onclick = async () => { dropdownMenu.style.display = 'none'; if (navigator.share && urlInput.value) { try { await navigator.share({ url: urlInput.value }); } catch(e){} } else showToast("Paylaşılabilecek sayfa yok"); };
         document.getElementById('m-save').onclick = () => { dropdownMenu.style.display = 'none'; showToast("Yer işaretlerine eklendi"); };
         document.getElementById('m-newtab').onclick = () => { dropdownMenu.style.display = 'none'; createNewTab(false); };
