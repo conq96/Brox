@@ -1,6 +1,7 @@
 package com.brox.browser;
 
 import android.os.Bundle;
+import android.view.View;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
 import com.getcapacitor.BridgeActivity;
@@ -36,10 +37,17 @@ public class MainActivity extends BridgeActivity {
         @JavascriptInterface
         public void setFullscreen(boolean enable) {
             runOnUiThread(() -> {
+                View decorView = getWindow().getDecorView();
                 if (enable) {
-                    getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+                    // Sayfa boyutunu/yakınlığını bozmadan gerçek tam ekran (Immersive Sticky Mode)
+                    decorView.setSystemUiVisibility(
+                        View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                        | View.SYSTEM_UI_FLAG_FULLSCREEN
+                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    );
                 } else {
-                    getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+                    // Normal görünüme dön (Durum çubuğu ve navigasyon geri gelsin)
+                    decorView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE);
                 }
             });
         }
