@@ -110,7 +110,6 @@
         <button class="menu-item" id="m-settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l-.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg> Ayarlar</button>
     </div> 
 
-    <!-- Sekme Menüsü & Modallar -->
     <div id="tabs-menu" class="dropdown-menu">
         <button class="menu-item" id="tm-close-all">Tüm sekmeleri kapat</button>
         <button class="menu-item" id="tm-select-mode">Seç</button>
@@ -125,7 +124,7 @@
         </div>
     </div>
     
-    <!-- AYARLAR MODALI (KAYBOLAN TÜM SEÇENEKLER EKSİKSİZ EKLENDİ) -->
+    <!-- AYARLAR MODALI EKSİKSİZ ONARILDI -->
     <div id="settings-modal">
         <div class="settings-header">Ayarlar <span id="close-settings" style="cursor:pointer; font-size:22px; color:var(--text-muted);">×</span></div>
         
@@ -142,26 +141,16 @@
             </select>
         </div>
         <div class="setting-row" id="custom-engine-row" style="display:none;">
-            <div>
-                <div>Özel Arama URL Yapısı</div>
-                <div class="setting-desc">Örn: https://site.com/search?q=</div>
-            </div>
+            <div><div>Özel Arama URL Yapısı</div><div class="setting-desc">Örn: https://site.com/search?q=</div></div>
             <input type="text" id="custom-engine-input" class="setting-input" placeholder="URL şablonu yazın">
         </div>
-
         <div class="setting-row">
             <span>Karşılama Ekranı Seçenekleri</span>
-            <select id="home-screen-select" class="setting-select">
-                <option value="shortcuts">Kısayol ekranı</option>
-                <option value="url">URL</option>
-            </select>
+            <select id="home-screen-select" class="setting-select"><option value="shortcuts">Kısayol ekranı</option><option value="url">URL</option></select>
         </div>
         <div class="setting-row">
             <span>Yeni Sekme Sayfası</span>
-            <select id="new-tab-page-select" class="setting-select">
-                <option value="shortcuts">Kısayol ekranı</option>
-                <option value="url">URL</option>
-            </select>
+            <select id="new-tab-page-select" class="setting-select"><option value="shortcuts">Kısayol ekranı</option><option value="url">URL</option></select>
         </div>
 
         <div class="setting-section-title">Görünüm</div>
@@ -179,10 +168,7 @@
         </div>
         <div class="setting-row">
             <span>Görüntüleme Dili</span>
-            <select id="display-lang-select" class="setting-select">
-                <option value="tr">Türkçe</option>
-                <option value="en">English</option>
-            </select>
+            <select id="display-lang-select" class="setting-select"><option value="tr">Türkçe</option><option value="en">English</option></select>
         </div>
 
         <div class="setting-section-title">Gizlilik & Güvenlik</div>
@@ -192,24 +178,14 @@
         </div>
         <div class="setting-row">
             <span>Güvenli DNS</span>
-            <select id="dns-select" class="setting-select">
-                <option value="off">Kapalı</option>
-                <option value="google">Google</option>
-                <option value="opendns">OpenDNS</option>
-                <option value="cloudflare">Cloudflare</option>
-                <option value="family">Family</option>
-            </select>
+            <select id="dns-select" class="setting-select"><option value="off">Kapalı</option><option value="google">Google</option><option value="opendns">OpenDNS</option><option value="cloudflare">Cloudflare</option><option value="family">Family</option></select>
         </div>
         <div class="setting-row">
             <div><div>Uygulamadan Çıkıldığında Açık Sekmeler</div></div>
-            <select id="exit-tabs-select" class="setting-select">
-                <option value="close">Kapansın</option>
-                <option value="preserve">Korunsun</option>
-            </select>
+            <select id="exit-tabs-select" class="setting-select"><option value="close">Kapansın</option><option value="preserve">Korunsun</option></select>
         </div>
     </div>
 
-    <!-- Sekmeler Yöneticisi -->
     <div id="tabs-modal">
         <div class="tabs-header">
             <span>Açık Sekmeler</span>
@@ -227,22 +203,16 @@
         </div>
     </div> 
 
-    <!-- Ana Sayfa (Kısayollar) -->
     <div id="home-content">
         <div class="shortcuts-title">Sık Kullanılanlar</div>
         <div class="shortcut-grid" id="shortcut-grid"></div>
     </div>
     
-    <!-- EKSİK OLAN ARAMA VE SAYFA GÖSTERİM ÇERÇEVESİ (IFRAME) EKLENDİ -->
-    <iframe id="webview-frame" src="" style="display: none; width: 100%; flex-grow: 1; border: none; background-color: #ffffff;"></iframe>
-    
     <div id="toast"></div> 
 
-    <!-- JS: Hiçbir özellik kaybolmadan her şey eski yerine oturtuldu -->
     <script>
         const urlInput = document.getElementById('url-input');
         const homeContent = document.getElementById('home-content');
-        const webviewFrame = document.getElementById('webview-frame');
         const homeToolbarBtn = document.getElementById('home-toolbar-btn');
         const addTabBtn = document.getElementById('add-tab-btn');
         const tabCounterBtn = document.getElementById('tab-counter-btn');
@@ -268,7 +238,6 @@
             t.classList.add("show"); setTimeout(() => t.classList.remove("show"), 2500);
         }
 
-        // Menü Kapanma Mantığı
         window.onclick = (e) => {
             if (!dropdownMenu.contains(e.target) && e.target !== menuBtn && !menuBtn.contains(e.target)) dropdownMenu.style.display = 'none';
             if (!tabsMenu.contains(e.target) && e.target !== tabsMenuBtn && !tabsMenuBtn.contains(e.target)) tabsMenu.style.display = 'none';
@@ -276,7 +245,6 @@
         menuBtn.onclick = (e) => { e.stopPropagation(); dropdownMenu.style.display = dropdownMenu.style.display === 'flex' ? 'none' : 'flex'; tabsMenu.style.display = 'none'; };
         tabsMenuBtn.onclick = (e) => { e.stopPropagation(); tabsMenu.style.display = tabsMenu.style.display === 'flex' ? 'none' : 'flex'; dropdownMenu.style.display = 'none'; };
 
-        // 1. Kısayollar ve Ana Sayfa
         let shortcuts = JSON.parse(localStorage.getItem('brox_shortcuts')) || [
             { name: "Google", url: "https://www.google.com", pinned: true },
             { name: "YouTube", url: "https://www.youtube.com", pinned: true },
@@ -318,7 +286,6 @@
         document.getElementById('sm-pin').onclick = () => { shortcutModal.style.display = 'none'; if(selectedShortcutIndex !== null) { shortcuts[selectedShortcutIndex].pinned = !shortcuts[selectedShortcutIndex].pinned; localStorage.setItem('brox_shortcuts', JSON.stringify(shortcuts)); renderShortcuts(); } };
         document.getElementById('sm-delete').onclick = () => { shortcutModal.style.display = 'none'; if(selectedShortcutIndex !== null) { shortcuts.splice(selectedShortcutIndex, 1); localStorage.setItem('brox_shortcuts', JSON.stringify(shortcuts)); renderShortcuts(); } };
 
-        // 2. Arama Motoru Ayarları
         let savedEngine = localStorage.getItem('brox_engine') || 'https://www.google.com/search?q=';
         searchEngineSelect.value = savedEngine;
         searchEngineSelect.onchange = (e) => {
@@ -327,7 +294,6 @@
             showToast("Arama motoru güncellendi");
         };
 
-        // 3. Sekmeler
         let tabs = [{ id: 1, url: '', title: 'Yeni Sekme', incognito: false }];
         let activeTabId = 1;
 
@@ -354,7 +320,7 @@
         document.getElementById('sel-close').onclick = () => { let chk = document.querySelectorAll('.tab-card input[type="checkbox"]:checked'); let ids = Array.from(chk).map(c => Number(c.dataset.id)); tabs = tabs.filter(t => !ids.includes(t.id)); if(tabs.length===0) createNewTab(); isSelectMode = false; renderTabs(); };
         document.getElementById('sel-incognito').onclick = () => { let chk = document.querySelectorAll('.tab-card input[type="checkbox"]:checked'); chk.forEach(c => { let t = tabs.find(i => i.id === Number(c.dataset.id)); if(t && t.url) tabs.push({ id: Date.now()+Math.random(), url: t.url, title: t.title, incognito: true }); }); isSelectMode = false; renderTabs(); };
 
-        // 4. URL Yükleme ve Arama Motoru İşleme (ÇÖZÜLEN KISIM)
+        // IFRAME TAMAMEN KALDIRILDI - SADECE NATIVE (JAVA) ÇAĞRISI YAPIYORUZ
         function processAndLoad(inputVal) {
             if(!inputVal) return;
             let query = inputVal.trim();
@@ -369,10 +335,6 @@
             urlInput.value = finalUrl; 
             homeContent.style.display = 'none';
             
-            // Siteyi iframe içerisinde göster
-            webviewFrame.src = finalUrl;
-            webviewFrame.style.display = 'block';
-
             if (window.BroxNative && window.BroxNative.loadUrl) window.BroxNative.loadUrl(finalUrl);
             
             const t = tabs.find(t => t.id === activeTabId);
@@ -383,8 +345,6 @@
         
         window.resetBrowser = function() { 
             homeContent.style.display = 'flex'; 
-            webviewFrame.style.display = 'none';
-            webviewFrame.src = '';
             urlInput.value = ''; 
             renderShortcuts(); 
             const t = tabs.find(t => t.id === activeTabId); 
@@ -398,8 +358,6 @@
             
             if(tab.url) { 
                 homeContent.style.display = 'none';
-                webviewFrame.style.display = 'block';
-                webviewFrame.src = tab.url;
                 if (window.BroxNative && window.BroxNative.loadUrl) window.BroxNative.loadUrl(tab.url);
             } else { 
                 if (window.BroxNative && window.BroxNative.hideWebView) window.BroxNative.hideWebView(); 
@@ -408,7 +366,6 @@
         }
         function closeTab(id) { tabs = tabs.filter(t => t.id !== id); if(tabs.length === 0) createNewTab(); else if(activeTabId === id) switchTab(tabs[tabs.length-1].id); renderTabs(); }
 
-        // 5. Ayarlar ve Fonksiyonlar (TAMAMI KORUNDU)
         document.getElementById('m-settings').onclick = () => { dropdownMenu.style.display = 'none'; settingsModal.style.display = 'flex'; };
         document.getElementById('close-settings').onclick = () => { settingsModal.style.display = 'none'; };
 
@@ -428,7 +385,7 @@
             showToast("Tam ekran modu (Çıkmak için Geri tuşuna basın)");
         };
 
-        // Geri & İleri Tuşları (İframe desteği eklendi)
+        // Geri & İleri Tuşları
         document.getElementById('m-back').onclick = () => { 
             dropdownMenu.style.display = 'none'; 
             if (isFullscreen) { 
@@ -437,19 +394,16 @@
                 showToast("Tam ekrandan çıkıldı"); return; 
             }
             if (window.BroxNative && window.BroxNative.goBack) window.BroxNative.goBack(); 
-            else {
-                try { webviewFrame.contentWindow.history.back(); } catch(e) { window.history.back(); }
-            }
+            else window.history.back();
         };
         document.getElementById('m-forward').onclick = () => { 
             dropdownMenu.style.display = 'none'; 
             if (window.BroxNative && window.BroxNative.goForward) window.BroxNative.goForward(); 
-            else { try { webviewFrame.contentWindow.history.forward(); } catch(e) { window.history.forward(); } } 
+            else window.history.forward();
         };
         document.getElementById('m-refresh').onclick = () => { 
             dropdownMenu.style.display = 'none'; 
             if (window.BroxNative && window.BroxNative.reload) window.BroxNative.reload(); 
-            else { try { webviewFrame.contentWindow.location.reload(); } catch(e){} }
             showToast("Sayfa yenileniyor"); 
         };
 

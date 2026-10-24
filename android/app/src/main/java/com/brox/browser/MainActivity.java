@@ -11,6 +11,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
         
         // Uygulama açılışında ekran görüntüsü engelini varsayılan olarak TEMİZLİYORUZ (Kapalı)
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SECURE);
