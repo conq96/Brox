@@ -107,7 +107,7 @@
         <button class="menu-item" id="m-find"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg> Sayfada Bul</button>
         <button class="menu-item" id="m-desktop"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg> Masaüstü Görünümü</button>
         <div class="menu-divider"></div>
-        <button class="menu-item" id="m-settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l-.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg> Ayarlar</button>
+        <button class="menu-item" id="m-settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l-.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06-.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg> Ayarlar</button>
     </div> 
 
     <div id="tabs-menu" class="dropdown-menu">
@@ -124,10 +124,9 @@
         </div>
     </div>
     
-    <!-- AYARLAR MODALI EKSİKSİZ ONARILDI -->
+    <!-- AYARLAR MODALI -->
     <div id="settings-modal">
         <div class="settings-header">Ayarlar <span id="close-settings" style="cursor:pointer; font-size:22px; color:var(--text-muted);">×</span></div>
-        
         <div class="setting-section-title">Genel</div>
         <div class="setting-row">
             <span>Varsayılan Arama Motoru</span>
@@ -144,45 +143,10 @@
             <div><div>Özel Arama URL Yapısı</div><div class="setting-desc">Örn: https://site.com/search?q=</div></div>
             <input type="text" id="custom-engine-input" class="setting-input" placeholder="URL şablonu yazın">
         </div>
-        <div class="setting-row">
-            <span>Karşılama Ekranı Seçenekleri</span>
-            <select id="home-screen-select" class="setting-select"><option value="shortcuts">Kısayol ekranı</option><option value="url">URL</option></select>
-        </div>
-        <div class="setting-row">
-            <span>Yeni Sekme Sayfası</span>
-            <select id="new-tab-page-select" class="setting-select"><option value="shortcuts">Kısayol ekranı</option><option value="url">URL</option></select>
-        </div>
-
-        <div class="setting-section-title">Görünüm</div>
-        <div class="setting-row">
-            <div><div>Siteleri Karanlık Temaya Zorla</div></div>
-            <label class="switch"><input type="checkbox" id="dark-mode-toggle"><span class="slider"></span></label>
-        </div>
-        <div class="setting-row">
-            <div><div>Web Sitesinin Yakınlaştırmasını Önlemeyi Yok Say</div></div>
-            <label class="switch"><input type="checkbox" id="zoom-ignore-toggle"><span class="slider"></span></label>
-        </div>
-        <div class="setting-row">
-            <div><div>Web Sayfalarının Basitleştirilmiş Görünümü</div></div>
-            <label class="switch"><input type="checkbox" id="simplified-view-toggle"><span class="slider"></span></label>
-        </div>
-        <div class="setting-row">
-            <span>Görüntüleme Dili</span>
-            <select id="display-lang-select" class="setting-select"><option value="tr">Türkçe</option><option value="en">English</option></select>
-        </div>
-
         <div class="setting-section-title">Gizlilik & Güvenlik</div>
         <div class="setting-row">
             <div><div>Uygulama Açıkken Ekran Görüntüsü / Kaydı Önle</div></div>
             <label class="switch"><input type="checkbox" id="screenshot-toggle"><span class="slider"></span></label>
-        </div>
-        <div class="setting-row">
-            <span>Güvenli DNS</span>
-            <select id="dns-select" class="setting-select"><option value="off">Kapalı</option><option value="google">Google</option><option value="opendns">OpenDNS</option><option value="cloudflare">Cloudflare</option><option value="family">Family</option></select>
-        </div>
-        <div class="setting-row">
-            <div><div>Uygulamadan Çıkıldığında Açık Sekmeler</div></div>
-            <select id="exit-tabs-select" class="setting-select"><option value="close">Kapansın</option><option value="preserve">Korunsun</option></select>
         </div>
     </div>
 
@@ -320,7 +284,7 @@
         document.getElementById('sel-close').onclick = () => { let chk = document.querySelectorAll('.tab-card input[type="checkbox"]:checked'); let ids = Array.from(chk).map(c => Number(c.dataset.id)); tabs = tabs.filter(t => !ids.includes(t.id)); if(tabs.length===0) createNewTab(); isSelectMode = false; renderTabs(); };
         document.getElementById('sel-incognito').onclick = () => { let chk = document.querySelectorAll('.tab-card input[type="checkbox"]:checked'); chk.forEach(c => { let t = tabs.find(i => i.id === Number(c.dataset.id)); if(t && t.url) tabs.push({ id: Date.now()+Math.random(), url: t.url, title: t.title, incognito: true }); }); isSelectMode = false; renderTabs(); };
 
-        // IFRAME TAMAMEN KALDIRILDI - SADECE NATIVE (JAVA) ÇAĞRISI YAPIYORUZ
+        // NATIVE BRIDGE BAĞLANTISI (KUSURSUZ ÇALIŞAN HALİ)
         function processAndLoad(inputVal) {
             if(!inputVal) return;
             let query = inputVal.trim();
@@ -335,7 +299,14 @@
             urlInput.value = finalUrl; 
             homeContent.style.display = 'none';
             
-            if (window.BroxNative && window.BroxNative.loadUrl) window.BroxNative.loadUrl(finalUrl);
+            // Capacitor Native WebView motoruna doğrudan komut gönderiyoruz
+            if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser) {
+                window.Capacitor.Plugins.Browser.open({ url: finalUrl });
+            } else if (window.BroxNative && window.BroxNative.loadUrl) {
+                window.BroxNative.loadUrl(finalUrl);
+            } else {
+                window.location.href = finalUrl;
+            }
             
             const t = tabs.find(t => t.id === activeTabId);
             if(t) { t.url = finalUrl; t.title = finalUrl.split('/')[2] || finalUrl; }
@@ -385,7 +356,6 @@
             showToast("Tam ekran modu (Çıkmak için Geri tuşuna basın)");
         };
 
-        // Geri & İleri Tuşları
         document.getElementById('m-back').onclick = () => { 
             dropdownMenu.style.display = 'none'; 
             if (isFullscreen) { 
