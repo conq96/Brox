@@ -426,6 +426,299 @@
             const obs = new MutationObserver(check);
             overlays.forEach(el => obs.observe(el, { attributes: true, attributeFilter: ['style'] }));
         })();
+
+        // BROX-STEP3: sekme yöneticisi menüsü + Ayarlar > Genel
+        (function () {
+            try {
+                const st = document.createElement('style');
+                st.textContent = `
+                #tabs-menu { top: 56px; right: 16px; width: 240px; z-index: 90; }
+                #tabs-menu .menu-item { white-space: normal; line-height: 1.3; }
+                .tab-card { touch-action: pan-y; }
+                .setting-input.wide { max-width: 100%; width: 100%; }
+                .setting-box { display: flex; flex-direction: column; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+                .setting-subrow { padding: 8px 0 10px 0; border-bottom: 1px solid var(--border); }
+                .engine-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 12px; color: var(--text-main); }
+                .engine-item small { display: block; color: var(--text-muted); font-size: 10px; word-break: break-all; }
+                .engine-del { background: var(--bg-hover); color: var(--text-muted); border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; flex-shrink: 0; }
+                `;
+                document.head.appendChild(st);
+            } catch (e) { console.log('Brox stil hatasi', e); }
+        })();
+
+        // --- Sekme yöneticisi: üç nokta menüsü, seçim, kaydırarak kapatma ---
+        (function () {
+            try {
+                const tmSelect = document.getElementById('tm-select-mode');
+                tabsMenu.insertAdjacentHTML('beforeend',
+                    '<button class="menu-item" id="tm-sel-close" style="display:none;">Seçilen sekmeleri kapat</button>' +
+                    '<button class="menu-item" id="tm-sel-incognito" style="display:none;">Seçilen sekmeleri gizli sekme olarak aç</button>');
+                const tmSelClose = document.getElementById('tm-sel-close');
+                const tmSelIncog = document.getElementById('tm-sel-incognito');
+                let idCounter = 0;
+                const newId = () => Date.now() * 1000 + (idCounter++ % 1000);
+
+                function selectedIds() {
+                    return Array.from(document.querySelectorAll('#tab-grid-container .tab-card input[type="checkbox"]:checked'))
+                        .map(c => Number(c.dataset.id));
+                }
+                function updateTabsMenuItems() {
+                    const n = isSelectMode ? selectedIds().length : 0;
+                    tmSelClose.style.display = n > 0 ? 'flex' : 'none';
+                    tmSelIncog.style.display = n > 0 ? 'flex' : 'none';
+                    tmSelect.textContent = isSelectMode ? 'Seçimden çık' : 'Seç';
+                }
+
+                function enhanceTabCards() {
+                    const cards = document.querySelectorAll('#tab-grid-container .tab-card');
+                    cards.forEach((card, i) => {
+                        const tab = tabs[i];
+                        if (!tab) return;
+                        let startX = 0, startY = 0, dx = 0, swiping = false;
+                        card.ontouchstart = (e) => {
+                            startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+                            dx = 0; swiping = false; card.style.transition = 'none';
+                        };
+                        card.ontouchmove = (e) => {
+                            const x = e.touches[0].clientX - startX;
+                            const y = e.touches[0].clientY - startY;
+                            if (!swiping && Math.abs(x) > 10 && Math.abs(x) > Math.abs(y)) swiping = true;
+                            if (!swiping) return;
+                            dx = x;
+                            card.style.transform = 'translateX(' + dx + 'px)';
+                            card.style.opacity = String(1 - Math.min(Math.abs(dx) / 200, 0.8));
+                        };
+                        card.ontouchend = () => {
+                            card.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
+                            if (swiping && Math.abs(dx) > 100) {
+                                card.style.transform = 'translateX(' + (dx > 0 ? '110%' : '-110%') + ')';
+                                card.style.opacity = '0';
+                                setTimeout(() => closeTab(tab.id), 180);
+                            } else {
+                                card.style.transform = 'translateX(0)';
+                                card.style.opacity = '1';
+                            }
+                            if (swiping) { card.dataset.swiped = '1'; setTimeout(() => { delete card.dataset.swiped; }, 60); }
+                        };
+                        const origClick = card.onclick;
+                        card.onclick = (e) => {
+                            if (card.dataset.swiped) return;
+                            if (origClick) origClick.call(card, e);
+                            updateTabsMenuItems();
+                        };
+                        const cb = card.querySelector('input[type="checkbox"]');
+                        if (cb) cb.onclick = (e) => { e.stopPropagation(); updateTabsMenuItems(); };
+                    });
+                }
+
+                const origRenderTabs = renderTabs;
+                renderTabs = function () {
+                    origRenderTabs();
+                    selectionToolbar.style.display = 'none';
+                    enhanceTabCards();
+                    updateTabsMenuItems();
+                };
+
+                // Sekme yöneticisi açıkken bir sekme kapatılınca yönetici kapanmasın
+                const origCloseTab = closeTab;
+                closeTab = function (id) {
+                    const modalOpen = tabsModal.style.display === 'flex';
+                    origCloseTab(id);
+                    if (modalOpen) { tabsModal.style.display = 'flex'; renderTabs(); }
+                };
+
+                tmSelect.onclick = () => { isSelectMode = !isSelectMode; tabsMenu.style.display = 'none'; renderTabs(); };
+
+                tmSelClose.onclick = () => {
+                    const ids = selectedIds();
+                    tabsMenu.style.display = 'none';
+                    if (!ids.length) return;
+                    const wasActive = ids.includes(activeTabId);
+                    const wasOpen = tabsModal.style.display === 'flex';
+                    tabs = tabs.filter(t => !ids.includes(t.id));
+                    isSelectMode = false;
+                    if (tabs.length === 0) createNewTab();
+                    else if (wasActive) { switchTab(tabs[tabs.length - 1].id); if (wasOpen) tabsModal.style.display = 'flex'; }
+                    renderTabs();
+                };
+
+                tmSelIncog.onclick = () => {
+                    const ids = selectedIds();
+                    tabsMenu.style.display = 'none';
+                    if (!ids.length) return;
+                    ids.forEach(id => {
+                        const t = tabs.find(i => i.id === id);
+                        if (!t) return;
+                        tabs.push({ id: newId(), url: t.url, title: t.url ? t.title : 'Gizli Sekme', incognito: true });
+                    });
+                    isSelectMode = false;
+                    renderTabs();
+                    showToast(ids.length + ' gizli sekme açıldı');
+                };
+
+                renderTabs();
+            } catch (e) { console.log('Brox sekme hatasi', e); }
+        })();
+
+        // --- Ayarlar > Genel: arama motorları, karşılama ekranı, yeni sekme sayfası ---
+        (function () {
+            try {
+                const BUILTIN = [
+                    ['Google (Varsayılan)', 'https://www.google.com/search?q='],
+                    ['Yandex', 'https://yandex.com/search/?text='],
+                    ['DuckDuckGo', 'https://duckduckgo.com/?q='],
+                    ['Bing', 'https://www.bing.com/search?q='],
+                    ['Brox Engine', 'http://localhost:3000/search?q=']
+                ];
+                const DEFAULT_ENGINE = BUILTIN[0][1];
+                const loadCustom = () => {
+                    try { const a = JSON.parse(localStorage.getItem('brox_engines_custom')); return Array.isArray(a) ? a : []; }
+                    catch (e) { return []; }
+                };
+                const saveCustom = (a) => localStorage.setItem('brox_engines_custom', JSON.stringify(a));
+                const currentEngine = () => localStorage.getItem('brox_engine') || DEFAULT_ENGINE;
+                const normalizeUrl = (u) => { u = u.trim(); return /^https?:\/\//i.test(u) ? u : 'https://' + u; };
+
+                const oldRow = document.getElementById('custom-engine-row');
+                if (oldRow) oldRow.remove();
+
+                const engineRow = searchEngineSelect.closest('.setting-row');
+                engineRow.insertAdjacentHTML('afterend',
+                    '<div class="setting-box" id="engine-add-box" style="display:none;">' +
+                        '<input type="text" id="eng-name" class="setting-input wide" placeholder="Arama motoru adı (örn: Ecosia)">' +
+                        '<input type="text" id="eng-url" class="setting-input wide" placeholder="URL şablonu">' +
+                        '<div class="setting-desc">Arama kelimesinin geleceği yere kadar yazın. Örn: https://www.ecosia.org/search?q=</div>' +
+                        '<button class="sel-btn" id="eng-add">Ekle</button>' +
+                    '</div>' +
+                    '<div id="engine-custom-list"></div>' +
+                    '<div class="setting-row"><div><div>Karşılama Ekranı</div><div class="setting-desc">Uygulama açıldığında gösterilecek sayfa</div></div>' +
+                        '<select id="welcome-mode" class="setting-select"><option value="shortcuts">Kısayol ekranı</option><option value="url">URL</option></select></div>' +
+                    '<div class="setting-subrow" id="welcome-url-row" style="display:none;"><input type="text" id="welcome-url" class="setting-input wide" placeholder="https://site.com"></div>' +
+                    '<div class="setting-row"><div><div>Yeni Sekme Sayfası</div><div class="setting-desc">Yeni sekme açıldığında gösterilecek sayfa</div></div>' +
+                        '<select id="newtab-mode" class="setting-select"><option value="shortcuts">Kısayol ekranı</option><option value="url">URL</option></select></div>' +
+                    '<div class="setting-subrow" id="newtab-url-row" style="display:none;"><input type="text" id="newtab-url" class="setting-input wide" placeholder="https://site.com"></div>');
+
+                const addBox = document.getElementById('engine-add-box');
+                const nameIn = document.getElementById('eng-name');
+                const urlIn = document.getElementById('eng-url');
+                const listEl = document.getElementById('engine-custom-list');
+
+                function renderEngines() {
+                    const custom = loadCustom();
+                    const all = BUILTIN.concat(custom.map(c => [c.name, c.url]));
+                    const cur = currentEngine();
+                    if (!all.some(e => e[1] === cur)) all.push(['Kayıtlı özel motor', cur]);
+                    searchEngineSelect.innerHTML = '';
+                    all.forEach(e => {
+                        const o = document.createElement('option');
+                        o.value = e[1]; o.textContent = e[0];
+                        searchEngineSelect.appendChild(o);
+                    });
+                    const add = document.createElement('option');
+                    add.value = '__add__'; add.textContent = 'Manuel Ekle...';
+                    searchEngineSelect.appendChild(add);
+                    searchEngineSelect.value = cur;
+
+                    listEl.innerHTML = '';
+                    custom.forEach((c, i) => {
+                        const item = document.createElement('div'); item.className = 'engine-item';
+                        const info = document.createElement('div');
+                        info.textContent = c.name;
+                        const small = document.createElement('small'); small.textContent = c.url;
+                        info.appendChild(small);
+                        const del = document.createElement('button'); del.className = 'engine-del'; del.textContent = '×';
+                        del.onclick = () => {
+                            const arr = loadCustom(); const removed = arr.splice(i, 1)[0]; saveCustom(arr);
+                            if (removed && removed.url === currentEngine()) localStorage.setItem('brox_engine', DEFAULT_ENGINE);
+                            renderEngines(); showToast('Arama motoru silindi');
+                        };
+                        item.appendChild(info); item.appendChild(del);
+                        listEl.appendChild(item);
+                    });
+                }
+
+                searchEngineSelect.onchange = () => {
+                    if (searchEngineSelect.value === '__add__') {
+                        addBox.style.display = 'flex';
+                        searchEngineSelect.value = currentEngine();
+                        return;
+                    }
+                    localStorage.setItem('brox_engine', searchEngineSelect.value);
+                    addBox.style.display = 'none';
+                    showToast('Arama motoru güncellendi');
+                };
+
+                document.getElementById('eng-add').onclick = () => {
+                    const name = nameIn.value.trim();
+                    const raw = urlIn.value.trim();
+                    if (!name || !raw) { showToast('Ad ve URL gerekli'); return; }
+                    const url = normalizeUrl(raw);
+                    try { new URL(url); } catch (e) { showToast('Geçersiz URL şablonu'); return; }
+                    if (/\s/.test(url)) { showToast('URL boşluk içeremez'); return; }
+                    const arr = loadCustom(); arr.push({ name: name, url: url }); saveCustom(arr);
+                    localStorage.setItem('brox_engine', url);
+                    nameIn.value = ''; urlIn.value = ''; addBox.style.display = 'none';
+                    renderEngines(); showToast('Arama motoru eklendi');
+                };
+
+                renderEngines();
+
+                function bindPageSetting(prefix) {
+                    const sel = document.getElementById(prefix + '-mode');
+                    const row = document.getElementById(prefix + '-url-row');
+                    const inp = document.getElementById(prefix + '-url');
+                    const modeKey = 'brox_' + prefix + '_mode';
+                    const urlKey = 'brox_' + prefix + '_url';
+                    const mode = localStorage.getItem(modeKey) || 'shortcuts';
+                    sel.value = mode;
+                    inp.value = localStorage.getItem(urlKey) || '';
+                    row.style.display = mode === 'url' ? 'block' : 'none';
+                    sel.onchange = () => {
+                        localStorage.setItem(modeKey, sel.value);
+                        row.style.display = sel.value === 'url' ? 'block' : 'none';
+                        if (sel.value === 'url' && !inp.value) inp.focus();
+                    };
+                    inp.onchange = () => {
+                        let v = inp.value.trim();
+                        if (v) v = normalizeUrl(v);
+                        inp.value = v;
+                        localStorage.setItem(urlKey, v);
+                        showToast(v ? 'Adres kaydedildi' : 'Adres temizlendi');
+                    };
+                }
+                bindPageSetting('welcome');
+                bindPageSetting('newtab');
+
+                // Yeni sekme sayfası: "URL" seçiliyse yeni sekme o adresi açar
+                function scheduleNewTabPage(id) {
+                    setTimeout(() => {
+                        if (localStorage.getItem('brox_newtab_mode') !== 'url') return;
+                        const u = localStorage.getItem('brox_newtab_url');
+                        const t = tabs.find(x => x.id === id);
+                        if (u && t && !t.url && activeTabId === id) processAndLoad(u);
+                    }, 0);
+                }
+                const origCreateNewTab = createNewTab;
+                createNewTab = function (isIncognito) {
+                    origCreateNewTab(isIncognito);
+                    scheduleNewTabPage(activeTabId);
+                };
+                document.getElementById('tm-close-all').onclick = () => {
+                    const id = Date.now();
+                    tabs = [{ id: id, url: '', title: 'Yeni Sekme', incognito: false }];
+                    tabsMenu.style.display = 'none';
+                    isSelectMode = false;
+                    switchTab(id);
+                    scheduleNewTabPage(id);
+                };
+
+                // Karşılama ekranı: uygulama açılırken "URL" seçiliyse o adres açılır
+                if (localStorage.getItem('brox_welcome_mode') === 'url') {
+                    const wu = localStorage.getItem('brox_welcome_url');
+                    if (wu) setTimeout(() => processAndLoad(wu), 50);
+                }
+            } catch (e) { console.log('Brox genel ayar hatasi', e); }
+        })();
     </script>
 </body>
 </html>
