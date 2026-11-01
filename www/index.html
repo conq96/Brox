@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Brox Browser</title>
     <style>
-        :root { --bg-base: #000000; --bg-surface: #1C1C1E; --bg-hover: #2C2C2E; --text-main: #E5E5EA; --text-muted: #8E8E93; --border: #38383A; --incognito: #121019; } 
+        :root { --bg-base: #000000; --bg-surface: #141414; --bg-hover: #222222; --text-main: #D0D0D0; --text-muted: #8A8A8A; --border: #2E2E2E; --incognito: #0A0A0A; } 
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body, html { width: 100%; height: 100%; background-color: var(--bg-base); color: var(--text-main); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; flex-direction: column; overflow: hidden; -webkit-user-select: none; user-select: none; } 
 
@@ -75,7 +75,7 @@
         .shortcut-menu-box { background-color: var(--bg-surface); border: 1px solid var(--border); border-radius: 14px; width: 100%; max-width: 300px; display: flex; flex-direction: column; overflow: hidden; padding: 6px 0; }
         .shortcut-menu-item { padding: 12px 18px; color: var(--text-main); font-size: 14px; cursor: pointer; background: none; border: none; text-align: left; transition: 0.15s; }
         .shortcut-menu-item:hover { background-color: var(--bg-hover); }
-        .shortcut-menu-item.danger { color: #FF453A; }
+        .shortcut-menu-item.danger { color: #B0B0B0; }
 
         #toast { visibility: hidden; min-width: 180px; background-color: var(--bg-surface); border: 1px solid var(--border); color: var(--text-main); text-align: center; border-radius: 10px; padding: 8px 14px; position: fixed; z-index: 100; left: 50%; bottom: 24px; transform: translateX(-50%); font-size: 12px; opacity: 0; transition: opacity 0.3s; }
         #toast.show { visibility: visible; opacity: 1; }
@@ -283,7 +283,7 @@
             tabs.forEach(tab => {
                 const card = document.createElement('div');
                 card.className = `tab-card ${tab.id === activeTabId ? 'active' : ''} ${isSelectMode ? 'select-mode' : ''}`;
-                card.innerHTML = `<input type="checkbox" data-id="${tab.id}"><span>${tab.title} ${tab.incognito ? '🕵️' : ''}</span><div class="close-tab-btn" onclick="event.stopPropagation(); closeTab(${tab.id})">✖</div>`;
+                card.innerHTML = `<input type="checkbox" data-id="${tab.id}"><span>${tab.title} ${tab.incognito ? '· Gizli' : ''}</span><div class="close-tab-btn" onclick="event.stopPropagation(); closeTab(${tab.id})">×</div>`;
                 
                 let startX = 0;
                 card.ontouchstart = (e) => { startX = e.touches[0].clientX; };
@@ -402,6 +402,30 @@
         homeToolbarBtn.onclick = () => { if (window.BroxNative && window.BroxNative.hideWebView) window.BroxNative.hideWebView(); window.resetBrowser(); };
 
         renderShortcuts(); renderTabs();
+
+        // BROX-NATIVE-BRIDGE: gerçek WebView ile arayüz arasındaki bağlantılar
+        window.onNativeNav = function(url, title) {
+            if (!url || url === 'about:blank') return;
+            if (document.activeElement !== urlInput) urlInput.value = url;
+            const t = tabs.find(t => t.id === activeTabId);
+            if (t) { t.url = url; t.title = title || url.split('/')[2] || url; }
+        };
+        window.exitFullscreen = function() {
+            isFullscreen = false; document.body.classList.remove('fullscreen-mode');
+        };
+        (function() {
+            const overlays = ['dropdown-menu', 'tabs-menu', 'tabs-modal', 'settings-modal', 'shortcut-menu-modal'].map(id => document.getElementById(id));
+            let last = false;
+            function check() {
+                const open = overlays.some(el => getComputedStyle(el).display !== 'none');
+                if (open !== last) {
+                    last = open;
+                    if (window.BroxNative && window.BroxNative.setOverlayOpen) window.BroxNative.setOverlayOpen(open);
+                }
+            }
+            const obs = new MutationObserver(check);
+            overlays.forEach(el => obs.observe(el, { attributes: true, attributeFilter: ['style'] }));
+        })();
     </script>
 </body>
 </html>
