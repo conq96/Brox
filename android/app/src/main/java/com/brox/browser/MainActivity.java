@@ -167,7 +167,7 @@ public class MainActivity extends BridgeActivity {
                 view.setBackgroundColor(Color.BLACK);
                 contentRoot.addView(view, new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-                setImmersive(true);
+                applyImmersive(true);
             }
 
             @Override
@@ -178,7 +178,7 @@ public class MainActivity extends BridgeActivity {
                 WebChromeClient.CustomViewCallback cb = customViewCallback;
                 customViewCallback = null;
                 if (cb != null) cb.onCustomViewHidden();
-                if (!fullscreen) setImmersive(false);
+                if (!fullscreen) applyImmersive(false);
             }
         };
         siteView.setWebChromeClient(chromeClient);
@@ -267,7 +267,7 @@ public class MainActivity extends BridgeActivity {
     }
 
     @SuppressWarnings("deprecation")
-    private void setImmersive(boolean enable) {
+    private void applyImmersive(boolean enable) {
         View decorView = getWindow().getDecorView();
         if (enable) {
             // Sayfa boyutunu/yakınlığını bozmadan gerçek tam ekran (Immersive Sticky Mode)
@@ -293,7 +293,7 @@ public class MainActivity extends BridgeActivity {
             }
             if (fullscreen) {
                 fullscreen = false;
-                setImmersive(false);
+                applyImmersive(false);
                 bridge.getWebView().evaluateJavascript(
                     "window.exitFullscreen && window.exitFullscreen();", v -> relayoutSite());
                 return;
@@ -316,7 +316,7 @@ public class MainActivity extends BridgeActivity {
     };
 
     @Override
-    protected void onDestroy() {
+    public void onDestroy() {
         if (siteView != null) {
             if (contentRoot != null) contentRoot.removeView(siteView);
             siteView.destroy();
@@ -344,7 +344,7 @@ public class MainActivity extends BridgeActivity {
         public void setFullscreen(boolean enable) {
             runOnUiThread(() -> {
                 fullscreen = enable;
-                setImmersive(enable);
+                applyImmersive(enable);
                 relayoutSite();
             });
         }
