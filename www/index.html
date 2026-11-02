@@ -927,6 +927,260 @@
                 };
             } catch (e) { console.log('Brox adim4 hatasi', e); }
         })();
+
+        // BROX-STEP5: Geçmiş + İndirilenler
+        (function () {
+            try {
+                const st = document.createElement('style');
+                st.textContent = `
+                .brox-panel { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--bg-base); z-index: 75; display: none; flex-direction: column; }
+                .panel-header { display: flex; align-items: center; gap: 8px; padding: calc(10px + env(safe-area-inset-top, 0px)) 10px 10px 10px; border-bottom: 1px solid var(--border); font-size: 17px; color: var(--text-main); }
+                .panel-header span { flex: 1; }
+                .panel-back { background: transparent; border: none; color: var(--text-main); width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; cursor: pointer; padding: 0; }
+                .panel-back svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; }
+                .panel-action { background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-main); font-size: 13px; padding: 8px 12px; border-radius: 16px; cursor: pointer; }
+                .panel-search { padding: 10px 12px; }
+                .panel-search input { width: 100%; height: 38px; border-radius: 19px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-main); padding: 0 14px; font-size: 14px; outline: none; box-sizing: border-box; }
+                .panel-list { flex: 1; overflow-y: auto; padding: 0 12px 24px 12px; }
+                .panel-day { color: var(--text-muted); font-size: 12px; padding: 14px 4px 6px 4px; }
+                .panel-item { display: flex; align-items: center; gap: 10px; padding: 10px 4px; border-bottom: 1px solid var(--border); cursor: pointer; }
+                .pi-main { flex: 1; min-width: 0; }
+                .pi-title { color: var(--text-main); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                .pi-sub { color: var(--text-muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+                .pi-del { background: var(--bg-hover); color: var(--text-muted); border: none; border-radius: 50%; width: 26px; height: 26px; flex-shrink: 0; cursor: pointer; }
+                .pi-bar { height: 3px; background: var(--border); border-radius: 2px; margin-top: 6px; }
+                .pi-bar i { display: block; height: 100%; background: #8A8A8A; border-radius: 2px; }
+                .panel-empty { color: var(--text-muted); text-align: center; padding: 48px 0; font-size: 14px; }
+                `;
+                document.head.appendChild(st);
+
+                const backSvg = '<svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>';
+                document.body.insertAdjacentHTML('beforeend',
+                    '<div class="brox-panel" id="history-panel">' +
+                        '<div class="panel-header"><button class="panel-back" id="history-close">' + backSvg + '</button><span>Geçmiş</span><button class="panel-action" id="history-clear">Temizle</button></div>' +
+                        '<div class="panel-search"><input type="text" id="history-search" placeholder="Geçmişte ara" autocomplete="off"></div>' +
+                        '<div class="panel-list" id="history-list"></div>' +
+                    '</div>' +
+                    '<div class="brox-panel" id="downloads-panel">' +
+                        '<div class="panel-header"><button class="panel-back" id="downloads-close">' + backSvg + '</button><span>İndirilenler</span><button class="panel-action" id="downloads-clear">Listeyi temizle</button></div>' +
+                        '<div class="panel-list" id="downloads-list"></div>' +
+                    '</div>');
+
+                const histPanel = document.getElementById('history-panel');
+                const dlPanel = document.getElementById('downloads-panel');
+                const histList = document.getElementById('history-list');
+                const dlList = document.getElementById('downloads-list');
+                const histSearch = document.getElementById('history-search');
+                const histClear = document.getElementById('history-clear');
+                const dlClear = document.getElementById('downloads-clear');
+                const ALL_OVERLAYS = ['dropdown-menu', 'tabs-menu', 'tabs-modal', 'settings-modal', 'shortcut-menu-modal', 'history-panel', 'downloads-panel'];
+
+                function nat(name) {
+                    const args = Array.prototype.slice.call(arguments, 1);
+                    if (window.BroxNative && typeof window.BroxNative[name] === 'function') return window.BroxNative[name].apply(window.BroxNative, args);
+                }
+                function el(tag, cls, text) {
+                    const e = document.createElement(tag);
+                    if (cls) e.className = cls;
+                    if (text !== undefined) e.textContent = text;
+                    return e;
+                }
+                function hostOf(u) { try { return new URL(u).host || u; } catch (e) { return u; } }
+                function timeStr(ts) { return new Date(ts).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }); }
+                function dayLabel(ts) {
+                    const d = new Date(ts);
+                    const today = new Date(); today.setHours(0, 0, 0, 0);
+                    const diff = Math.round((today - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 86400000);
+                    if (diff === 0) return 'Bugün';
+                    if (diff === 1) return 'Dün';
+                    return d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+                }
+                function fmtSize(b) {
+                    if (!b || b < 0) return '';
+                    const u = ['B', 'KB', 'MB', 'GB']; let i = 0;
+                    while (b >= 1024 && i < 3) { b /= 1024; i++; }
+                    return (i ? b.toFixed(1) : Math.round(b)) + ' ' + u[i];
+                }
+                // Silme düğmeleri: ilk dokunuşta "Emin misin?", ikincide uygular
+                function armed(btn, label, action) {
+                    let timer = null;
+                    btn.onclick = () => {
+                        if (!timer) {
+                            btn.textContent = 'Emin misin?';
+                            timer = setTimeout(() => { btn.textContent = label; timer = null; }, 3000);
+                            return;
+                        }
+                        clearTimeout(timer); timer = null; btn.textContent = label;
+                        action();
+                    };
+                }
+
+                // Sayfa açıkken menü/panel açılınca site gizlensin (tüm örtüler birlikte izlenir)
+                const overlayObs = new MutationObserver(() => {
+                    const open = ALL_OVERLAYS.some(id => { const e = document.getElementById(id); return e && getComputedStyle(e).display !== 'none'; });
+                    nat('setOverlayOpen', open);
+                });
+                ALL_OVERLAYS.forEach(id => { const e = document.getElementById(id); if (e) overlayObs.observe(e, { attributes: true, attributeFilter: ['style'] }); });
+
+                let pollTimer = null;
+                function stopPoll() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
+                window.closeAllOverlays = function () {
+                    histPanel.style.display = 'none';
+                    dlPanel.style.display = 'none';
+                    stopPoll();
+                };
+                function openPanel(panel) {
+                    if (window.closeBars) window.closeBars();
+                    dropdownMenu.style.display = 'none';
+                    window.closeAllOverlays();
+                    panel.style.display = 'flex';
+                }
+                document.getElementById('history-close').onclick = () => window.closeAllOverlays();
+                document.getElementById('downloads-close').onclick = () => window.closeAllOverlays();
+
+                // ---------- Geçmiş ----------
+                const HKEY = 'brox_history';
+                const loadH = () => { try { const a = JSON.parse(localStorage.getItem(HKEY)); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
+                const saveH = (a) => { try { localStorage.setItem(HKEY, JSON.stringify(a.slice(0, 1500))); } catch (e) { } };
+
+                function recordHistory(url, title) {
+                    if (!url || url === 'about:blank' || /^(file|data|blob|javascript):/i.test(url)) return;
+                    const t = tabs.find(x => x.id === activeTabId);
+                    if (t && t.incognito) return;
+                    const h = loadH(); const now = Date.now(); const top = h[0];
+                    if (top && top.url === url && now - top.time < 30000) {
+                        if (title) top.title = title;
+                        top.time = now;
+                    } else {
+                        h.unshift({ url: url, title: title || hostOf(url), time: now });
+                    }
+                    saveH(h);
+                }
+                const origNav = window.onNativeNav;
+                window.onNativeNav = function (url, title) {
+                    if (origNav) origNav(url, title);
+                    if (url && /^file:/i.test(url)) urlInput.value = 'Kaydedilen sayfa';
+                    recordHistory(url, title);
+                };
+
+                function renderHistory() {
+                    const q = histSearch.value.trim().toLowerCase();
+                    let h = loadH();
+                    if (q) h = h.filter(e => (e.title || '').toLowerCase().includes(q) || e.url.toLowerCase().includes(q));
+                    histList.innerHTML = '';
+                    if (!h.length) { histList.appendChild(el('div', 'panel-empty', q ? 'Sonuç bulunamadı' : 'Geçmiş boş')); return; }
+                    let lastDay = '';
+                    h.slice(0, 300).forEach(entry => {
+                        const day = dayLabel(entry.time);
+                        if (day !== lastDay) { histList.appendChild(el('div', 'panel-day', day)); lastDay = day; }
+                        const row = el('div', 'panel-item');
+                        const main = el('div', 'pi-main');
+                        main.appendChild(el('div', 'pi-title', entry.title || hostOf(entry.url)));
+                        main.appendChild(el('div', 'pi-sub', hostOf(entry.url) + ' · ' + timeStr(entry.time)));
+                        const del = el('button', 'pi-del', '×');
+                        del.onclick = (e) => {
+                            e.stopPropagation();
+                            saveH(loadH().filter(x => !(x.time === entry.time && x.url === entry.url)));
+                            renderHistory();
+                        };
+                        row.onclick = () => { window.closeAllOverlays(); processAndLoad(entry.url); };
+                        row.appendChild(main); row.appendChild(del);
+                        histList.appendChild(row);
+                    });
+                }
+                histSearch.oninput = renderHistory;
+                armed(histClear, 'Temizle', () => { saveH([]); renderHistory(); showToast('Geçmiş temizlendi'); });
+                document.getElementById('m-history').onclick = () => {
+                    openPanel(histPanel);
+                    histSearch.value = '';
+                    renderHistory();
+                };
+
+                // ---------- İndirilenler ----------
+                const DKEY = 'brox_downloads';
+                const loadD = () => { try { const a = JSON.parse(localStorage.getItem(DKEY)); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
+                const saveD = (a) => { try { localStorage.setItem(DKEY, JSON.stringify(a.slice(0, 300))); } catch (e) { } };
+                let statusMap = {};
+
+                window.onDownloadStarted = function (id, name, url) {
+                    const d = loadD(); d.unshift({ kind: 'file', id: id, name: name, url: url, time: Date.now() }); saveD(d);
+                };
+                window.onPageSaved = function (name, path, url) {
+                    const d = loadD(); d.unshift({ kind: 'page', name: name, path: path, url: url, time: Date.now() }); saveD(d);
+                };
+
+                function refreshStatus() {
+                    const ids = loadD().filter(d => d.kind === 'file').map(d => d.id);
+                    statusMap = {};
+                    if (!ids.length) return false;
+                    let running = false;
+                    try {
+                        const raw = nat('getDownloadStatus', ids.join(','));
+                        JSON.parse(raw || '[]').forEach(s => { statusMap[s.id] = s; if (s.status === 1 || s.status === 2 || s.status === 4) running = true; });
+                    } catch (e) { }
+                    return running;
+                }
+                function openSavedPage(d) {
+                    window.closeAllOverlays();
+                    homeContent.style.display = 'none';
+                    urlInput.value = 'Kaydedilen sayfa';
+                    nat('loadUrl', 'file://' + d.path);
+                    const t = tabs.find(x => x.id === activeTabId);
+                    if (t) { t.url = 'file://' + d.path; t.title = d.name; }
+                }
+                function removeDownload(d) {
+                    if (d.kind === 'page' && d.path) nat('deleteSavedFile', d.path);
+                    saveD(loadD().filter(x => !(x.kind === d.kind && x.time === d.time && x.name === d.name)));
+                }
+                function renderDownloads() {
+                    const list = loadD();
+                    dlList.innerHTML = '';
+                    if (!list.length) { dlList.appendChild(el('div', 'panel-empty', 'İndirilen dosya yok')); return; }
+                    let lastDay = '';
+                    list.forEach(d => {
+                        const day = dayLabel(d.time);
+                        if (day !== lastDay) { dlList.appendChild(el('div', 'panel-day', day)); lastDay = day; }
+                        const row = el('div', 'panel-item');
+                        const main = el('div', 'pi-main');
+                        main.appendChild(el('div', 'pi-title', d.name));
+                        let sub = ''; let pct = -1; let ready = false;
+                        if (d.kind === 'page') { sub = 'Kaydedilen sayfa · ' + hostOf(d.url || ''); ready = true; }
+                        else {
+                            const s = statusMap[d.id];
+                            if (!s) sub = 'Bulunamadı (silinmiş olabilir)';
+                            else if (s.status === 8) { sub = 'Tamamlandı' + (s.total > 0 ? ' · ' + fmtSize(s.total) : ''); ready = true; }
+                            else if (s.status === 16) sub = 'Başarısız';
+                            else { pct = s.total > 0 ? Math.floor(s.bytes * 100 / s.total) : 0; sub = 'İndiriliyor' + (s.total > 0 ? ' %' + pct : '...'); }
+                        }
+                        main.appendChild(el('div', 'pi-sub', sub + ' · ' + timeStr(d.time)));
+                        if (pct >= 0) { const bar = el('div', 'pi-bar'); const fill = document.createElement('i'); fill.style.width = pct + '%'; bar.appendChild(fill); main.appendChild(bar); }
+                        const del = el('button', 'pi-del', '×');
+                        del.onclick = (e) => { e.stopPropagation(); removeDownload(d); renderDownloads(); };
+                        row.onclick = () => {
+                            if (!ready) { showToast('Dosya henüz hazır değil'); return; }
+                            if (d.kind === 'page') openSavedPage(d); else nat('openDownload', String(d.id));
+                        };
+                        row.appendChild(main); row.appendChild(del);
+                        dlList.appendChild(row);
+                    });
+                }
+                function refreshAndRender() {
+                    const running = refreshStatus();
+                    renderDownloads();
+                    if (!running) stopPoll();
+                }
+                armed(dlClear, 'Listeyi temizle', () => {
+                    loadD().forEach(d => { if (d.kind === 'page' && d.path) nat('deleteSavedFile', d.path); });
+                    saveD([]); renderDownloads(); showToast('Liste temizlendi');
+                });
+                document.getElementById('m-downloads').onclick = () => {
+                    openPanel(dlPanel);
+                    const running = refreshStatus();
+                    renderDownloads();
+                    if (running) pollTimer = setInterval(refreshAndRender, 1500);
+                };
+            } catch (e) { console.log('Brox adim5 hatasi', e); }
+        })();
     </script>
 </body>
 </html>

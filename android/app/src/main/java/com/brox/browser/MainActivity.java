@@ -16,6 +16,10 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import android.app.DownloadManager;
+import android.database.Cursor;
+import android.webkit.URLUtil;
+import org.json.JSONArray;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
@@ -115,6 +119,7 @@ public class MainActivity extends BridgeActivity {
         String ua = s.getUserAgentString().replace("; wv", "").replaceAll("Version/\\d+\\.\\d+\\s", "");
         s.setUserAgentString(ua);
         mobileUserAgent = ua;
+        s.setAllowFileAccess(true);
 
         CookieManager cm = CookieManager.getInstance();
         cm.setAcceptCookie(true);
@@ -203,6 +208,8 @@ public class MainActivity extends BridgeActivity {
         };
         siteView.setWebChromeClient(chromeClient);
         siteView.setFindListener((active, total, done) -> notifyFind(active, total));
+        siteView.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) ->
+            startDownload(url, userAgent, contentDisposition, mimeType));
 
         contentRoot.addView(siteView, new FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
@@ -409,11 +416,32 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
+    private void notifyJs(String js) {
+        if (bridge == null || bridge.getWebView() == null) return;
+        bridge.getWebView().evaluateJavascript(js, null);
+    }
+
+    private String copyToPrivate(File src, String name) {
+        try {
+            File dir = new File(getFilesDir(), "saved");
+            dir.mkdirs();
+            File dest = new File(dir, System.currentTimeMillis() + "_" + name);
+            try (OutputStream out = new FileOutputStream(dest);
+                 InputStream in = new FileInputStream(src)) {
+                copyStream(in, out);
+            }
+            return dest.getAbsolutePath();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     private void saveCurrent() {
         if (siteView == null || !siteActive) {
             nativeToast("Kaydedilecek sayfa yok");
             return;
         }
+        final String pageUrl = siteView.getUrl();
         final String name = safeName(siteView.getTitle()) + ".mht";
         final File tmp = new File(getCacheDir(), "kayit_" + System.currentTimeMillis() + ".mht");
         siteView.saveWebArchive(tmp.getAbsolutePath(), false, path -> {
@@ -423,10 +451,60 @@ public class MainActivity extends BridgeActivity {
             }
             new Thread(() -> {
                 boolean ok = copyToDownloads(tmp, name);
+                String priv = copyToPrivate(tmp, name);
                 tmp.delete();
-                runOnUiThread(() -> nativeToast(ok ? "Sayfa İndirilenler/Brox klasörüne kaydedildi" : "Sayfa kaydedilemedi"));
+                runOnUiThread(() -> {
+                    nativeToast(ok || priv != null ? "Sayfa kaydedildi (İndirilenler listesinde)" : "Sayfa kaydedilemedi");
+                    if (priv != null) {
+                        notifyJs("window.onPageSaved && window.onPageSaved(" + JSONObject.quote(name) + ","
+                            + JSONObject.quote(priv) + "," + JSONObject.quote(pageUrl == null ? "" : pageUrl) + ");");
+                    }
+                });
             }).start();
         });
+    }
+
+    private void startDownload(String url, String userAgent, String contentDisposition, String mimeType) {
+        if (url == null || !(url.startsWith("http://") || url.startsWith("https://"))) {
+            nativeToast("Bu indirme türü desteklenmiyor");
+            return;
+        }
+        try {
+            String fileName = URLUtil.guessFileName(url, contentDisposition, mimeType);
+            DownloadManager.Request req = new DownloadManager.Request(Uri.parse(url));
+            if (mimeType != null && !mimeType.isEmpty()) req.setMimeType(mimeType);
+            String cookie = CookieManager.getInstance().getCookie(url);
+            if (cookie != null) req.addRequestHeader("Cookie", cookie);
+            if (userAgent != null) req.addRequestHeader("User-Agent", userAgent);
+            req.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+            req.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "Brox/" + fileName);
+            DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+            long id = dm.enqueue(req);
+            nativeToast("İndirme başladı: " + fileName);
+            notifyJs("window.onDownloadStarted && window.onDownloadStarted(" + id + ","
+                + JSONObject.quote(fileName) + "," + JSONObject.quote(url) + ");");
+        } catch (Exception e) {
+            nativeToast("İndirme başlatılamadı");
+        }
+    }
+
+    private void openDownloadInternal(String idStr) {
+        try {
+            long id = Long.parseLong(idStr);
+            DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+            Uri uri = dm.getUriForDownloadedFile(id);
+            if (uri == null) {
+                nativeToast("Dosya bulunamadı");
+                return;
+            }
+            String mime = dm.getMimeTypeForDownloadedFile(id);
+            Intent view = new Intent(Intent.ACTION_VIEW);
+            view.setDataAndType(uri, mime == null ? "*/*" : mime);
+            view.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(view);
+        } catch (Exception e) {
+            nativeToast("Bu dosyayı açabilecek uygulama bulunamadı");
+        }
     }
 
     // ---------- Donanım Geri tuşu ----------
@@ -452,7 +530,8 @@ public class MainActivity extends BridgeActivity {
             if (overlayOpen) {
                 bridge.getWebView().evaluateJavascript(
                     "['dropdown-menu','tabs-menu','tabs-modal','settings-modal','shortcut-menu-modal']"
-                    + ".forEach(function(i){var e=document.getElementById(i);if(e)e.style.display='none';});", null);
+                    + ".forEach(function(i){var e=document.getElementById(i);if(e)e.style.display='none';});"
+                    + "window.closeAllOverlays && window.closeAllOverlays();", null);
                 return;
             }
             if (siteActive) {
@@ -625,6 +704,51 @@ public class MainActivity extends BridgeActivity {
                         + JSONObject.quote(value == null ? "" : value) + ");", null);
                 });
             });
+        }
+
+        @JavascriptInterface
+        public String getDownloadStatus(String idsCsv) {
+            JSONArray out = new JSONArray();
+            try {
+                if (idsCsv == null || idsCsv.isEmpty()) return "[]";
+                String[] parts = idsCsv.split(",");
+                long[] ids = new long[parts.length];
+                for (int i = 0; i < parts.length; i++) ids[i] = Long.parseLong(parts[i].trim());
+                DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+                Cursor c = dm.query(new DownloadManager.Query().setFilterById(ids));
+                if (c != null) {
+                    try {
+                        while (c.moveToNext()) {
+                            JSONObject o = new JSONObject();
+                            o.put("id", c.getLong(c.getColumnIndexOrThrow(DownloadManager.COLUMN_ID)));
+                            o.put("status", c.getInt(c.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS)));
+                            o.put("bytes", c.getLong(c.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)));
+                            o.put("total", c.getLong(c.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)));
+                            out.put(o);
+                        }
+                    } finally {
+                        c.close();
+                    }
+                }
+            } catch (Exception e) {
+                return "[]";
+            }
+            return out.toString();
+        }
+
+        @JavascriptInterface
+        public void openDownload(String idStr) {
+            runOnUiThread(() -> openDownloadInternal(idStr));
+        }
+
+        @JavascriptInterface
+        public void deleteSavedFile(String path) {
+            try {
+                File f = new File(path);
+                File base = new File(getFilesDir(), "saved");
+                if (f.getCanonicalPath().startsWith(base.getCanonicalPath() + File.separator)) f.delete();
+            } catch (Exception ignored) {
+            }
         }
     }
 }
