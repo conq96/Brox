@@ -719,6 +719,214 @@
                 }
             } catch (e) { console.log('Brox genel ayar hatasi', e); }
         })();
+
+        // BROX-STEP4: menü işlevleri (bul, yakınlaştır, masaüstü, paylaş, yazdır, kaydet, okuma modu)
+        function broxReaderMain() {
+            try {
+                var ID = '__brox_reader__';
+                var old = document.getElementById(ID);
+                if (old) { old.remove(); document.documentElement.style.overflow = ''; return 'off'; }
+                var paras = document.querySelectorAll('p');
+                var map = new Map(); var best = null; var bestScore = 0;
+                for (var i = 0; i < paras.length; i++) {
+                    var txt = (paras[i].innerText || '').trim();
+                    if (txt.length < 40) continue;
+                    var parent = paras[i].parentElement;
+                    if (!parent) continue;
+                    var sc = (map.get(parent) || 0) + txt.length;
+                    map.set(parent, sc);
+                    if (sc > bestScore) { bestScore = sc; best = parent; }
+                }
+                var arts = document.querySelectorAll('article');
+                var root = best;
+                if (arts.length === 1 && (arts[0].innerText || '').length > bestScore) root = arts[0];
+                if (!root || (root.innerText || '').length < 300) return 'none';
+                var clone = root.cloneNode(true);
+                var junk = clone.querySelectorAll('script,style,noscript,nav,aside,footer,form,iframe,button,svg,canvas,video,audio,select,input,textarea,[aria-hidden="true"],[role="navigation"],[role="banner"],[hidden]');
+                for (var j = 0; j < junk.length; j++) junk[j].remove();
+                var all = clone.querySelectorAll('*');
+                for (var k = 0; k < all.length; k++) {
+                    var el = all[k];
+                    el.removeAttribute('style'); el.removeAttribute('class'); el.removeAttribute('id');
+                    el.removeAttribute('onclick'); el.removeAttribute('width'); el.removeAttribute('height');
+                }
+                var h1 = document.querySelector('h1');
+                var title = (h1 && h1.innerText.trim()) || document.title || '';
+                var css = '*{box-sizing:border-box;max-width:100%;color:inherit;background:transparent;border-color:#333}' +
+                    '.bx{max-width:720px;margin:0 auto;padding:56px 20px 80px;font:19px/1.75 Georgia,"Times New Roman",serif;color:#C8C8C8}' +
+                    'h1{font-size:1.5em;line-height:1.3;margin:0 0 .8em;font-family:Roboto,Helvetica,Arial,sans-serif;color:#E0E0E0}' +
+                    'h2,h3{font-family:Roboto,Helvetica,Arial,sans-serif;color:#E0E0E0;line-height:1.3;margin:1.6em 0 .6em}' +
+                    'p{margin:0 0 1.1em}a{color:#B0B0B0;text-decoration:underline}' +
+                    'img{height:auto;display:block;margin:1em auto;filter:grayscale(1)}' +
+                    'blockquote{border-left:3px solid #444;margin:1em 0;padding:.2em 1em;color:#999}' +
+                    'pre,code{background:#111;font-size:.85em;overflow-x:auto}table{border-collapse:collapse}td,th{border:1px solid #333;padding:4px 8px}';
+                var host = document.createElement('div');
+                host.id = ID;
+                host.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;background:#000;overflow-y:auto;';
+                var shadow = host.attachShadow({ mode: 'open' });
+                try { var sheet = new CSSStyleSheet(); sheet.replaceSync(css); shadow.adoptedStyleSheets = [sheet]; }
+                catch (e) { var st = document.createElement('style'); st.textContent = css; shadow.appendChild(st); }
+                var box = document.createElement('div'); box.className = 'bx';
+                if (!clone.querySelector('h1')) { var hh = document.createElement('h1'); hh.textContent = title; box.appendChild(hh); }
+                box.appendChild(clone);
+                var x = document.createElement('div');
+                x.textContent = '×';
+                x.style.cssText = 'position:fixed;top:10px;right:14px;width:40px;height:40px;line-height:38px;text-align:center;font:28px Arial;color:#B0B0B0;background:#141414;border:1px solid #333;border-radius:50%;cursor:pointer;';
+                x.onclick = function () { host.remove(); document.documentElement.style.overflow = ''; };
+                shadow.appendChild(box); shadow.appendChild(x);
+                document.documentElement.appendChild(host);
+                document.documentElement.style.overflow = 'hidden';
+                return 'on';
+            } catch (err) { return 'none'; }
+        }
+
+        (function () {
+            try {
+                const st = document.createElement('style');
+                st.textContent = `
+                .brox-bar { position: fixed; left: 0; right: 0; display: none; align-items: center; gap: 6px; padding: 0 8px; background-color: var(--bg-base); border-bottom: 1px solid var(--border); z-index: 55; box-sizing: border-box; }
+                body.incognito .brox-bar { background-color: var(--incognito); }
+                .brox-bar input { flex: 1; min-width: 0; height: 36px; border-radius: 18px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-main); padding: 0 14px; font-size: 14px; outline: none; }
+                .brox-bar .bar-btn { background: transparent; border: none; color: var(--text-main); min-width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 18px; font-size: 22px; cursor: pointer; flex-shrink: 0; padding: 0; }
+                .brox-bar .bar-btn:active { background: var(--bg-hover); }
+                .brox-bar .bar-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; }
+                .brox-bar .bar-count { color: var(--text-muted); font-size: 12px; min-width: 38px; text-align: center; }
+                `;
+                document.head.appendChild(st);
+
+                document.body.insertAdjacentHTML('beforeend',
+                    '<div class="brox-bar" id="find-bar">' +
+                        '<input type="text" id="find-input" placeholder="Sayfada bul" autocomplete="off">' +
+                        '<span class="bar-count" id="find-count"></span>' +
+                        '<button class="bar-btn" id="find-prev"><svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"></polyline></svg></button>' +
+                        '<button class="bar-btn" id="find-next"><svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg></button>' +
+                        '<button class="bar-btn" id="find-close">×</button>' +
+                    '</div>' +
+                    '<div class="brox-bar" id="zoom-bar" style="justify-content:center;">' +
+                        '<button class="bar-btn" id="zoom-out">−</button>' +
+                        '<span class="bar-count" id="zoom-val" style="min-width:60px;font-size:15px;color:var(--text-main);">100%</span>' +
+                        '<button class="bar-btn" id="zoom-in">+</button>' +
+                        '<button class="bar-btn" id="zoom-reset" style="padding:0 14px;font-size:13px;">Sıfırla</button>' +
+                        '<button class="bar-btn" id="zoom-close">×</button>' +
+                    '</div>');
+
+                const toolbarEl = document.getElementById('toolbar');
+                const findBar = document.getElementById('find-bar');
+                const zoomBar = document.getElementById('zoom-bar');
+                const findInput = document.getElementById('find-input');
+                const findCount = document.getElementById('find-count');
+                const zoomVal = document.getElementById('zoom-val');
+                const OVERLAY_IDS = ['dropdown-menu', 'tabs-menu', 'tabs-modal', 'settings-modal', 'shortcut-menu-modal'];
+
+                function nat(name) {
+                    const args = Array.prototype.slice.call(arguments, 1);
+                    if (window.BroxNative && typeof window.BroxNative[name] === 'function') window.BroxNative[name].apply(window.BroxNative, args);
+                }
+                function isBrowsing() { return getComputedStyle(homeContent).display === 'none'; }
+                function anyOverlayOpen() {
+                    return OVERLAY_IDS.some(id => { const e = document.getElementById(id); return e && getComputedStyle(e).display !== 'none'; });
+                }
+
+                // Sayfa gezilirken bildirimler sitenin altında kalmasın: yerel (Android) bildirim kullan
+                const origToast = showToast;
+                showToast = function (msg) {
+                    if (window.BroxNative && typeof window.BroxNative.toast === 'function' && isBrowsing() && !anyOverlayOpen()) window.BroxNative.toast(String(msg));
+                    else origToast(msg);
+                };
+
+                let openBar = null;
+                function showBar(bar) {
+                    window.closeBars();
+                    const r = toolbarEl.getBoundingClientRect();
+                    bar.style.top = r.top + 'px';
+                    bar.style.height = r.height + 'px';
+                    bar.style.display = 'flex';
+                    openBar = bar;
+                    nat('setBarOpen', true);
+                }
+                window.closeBars = function () {
+                    if (!openBar) return;
+                    if (openBar === findBar) { findInput.blur(); nat('clearFind'); findInput.value = ''; findCount.textContent = ''; }
+                    openBar.style.display = 'none';
+                    openBar = null;
+                    nat('setBarOpen', false);
+                };
+                const origSwitchTab = switchTab;
+                switchTab = function (id) { window.closeBars(); return origSwitchTab(id); };
+
+                function needPage() {
+                    if (isBrowsing()) return false;
+                    showToast('Önce bir sayfa açın');
+                    return true;
+                }
+                function closeMenu() { dropdownMenu.style.display = 'none'; }
+
+                // --- Sayfada Bul ---
+                let findTimer = null;
+                findInput.oninput = () => { clearTimeout(findTimer); findTimer = setTimeout(() => nat('findInPage', findInput.value), 150); };
+                findInput.onkeydown = (e) => { if (e.key === 'Enter') nat('findNext', true); };
+                document.getElementById('find-next').onclick = () => nat('findNext', true);
+                document.getElementById('find-prev').onclick = () => nat('findNext', false);
+                document.getElementById('find-close').onclick = () => window.closeBars();
+                window.onFindResult = function (active, total) {
+                    findCount.textContent = total > 0 ? (active + 1) + '/' + total : (findInput.value ? '0/0' : '');
+                };
+                document.getElementById('m-find').onclick = () => {
+                    closeMenu();
+                    if (needPage()) return;
+                    showBar(findBar);
+                    findInput.focus();
+                };
+
+                // --- Yakınlaştır ---
+                const ZOOMS = [50, 75, 90, 100, 110, 125, 150, 175, 200, 250, 300];
+                let zoom = parseInt(localStorage.getItem('brox_zoom'), 10) || 100;
+                function applyZoom(v) {
+                    zoom = v;
+                    localStorage.setItem('brox_zoom', String(v));
+                    zoomVal.textContent = v + '%';
+                    nat('setTextZoom', v);
+                }
+                document.getElementById('zoom-in').onclick = () => { const n = ZOOMS.find(z => z > zoom); if (n) applyZoom(n); };
+                document.getElementById('zoom-out').onclick = () => { const p = ZOOMS.slice().reverse().find(z => z < zoom); if (p) applyZoom(p); };
+                document.getElementById('zoom-reset').onclick = () => applyZoom(100);
+                document.getElementById('zoom-close').onclick = () => window.closeBars();
+                document.getElementById('m-zoom').onclick = () => {
+                    closeMenu();
+                    if (needPage()) return;
+                    zoomVal.textContent = zoom + '%';
+                    showBar(zoomBar);
+                };
+                setTimeout(() => { if (zoom !== 100) nat('setTextZoom', zoom); }, 300);
+
+                // --- Masaüstü Görünümü ---
+                let desktop = false;
+                const desktopBtn = document.getElementById('m-desktop');
+                desktopBtn.onclick = () => {
+                    closeMenu();
+                    if (needPage()) return;
+                    desktop = !desktop;
+                    nat('setDesktopMode', desktop);
+                    desktopBtn.lastChild.nodeValue = desktop ? ' Mobil Görünüm' : ' Masaüstü Görünümü';
+                    showToast(desktop ? 'Masaüstü görünümü açık' : 'Mobil görünüme dönüldü');
+                };
+
+                // --- Paylaş / Yazdır / Kaydet ---
+                document.getElementById('m-share').onclick = () => { closeMenu(); if (needPage()) return; nat('sharePage'); };
+                document.getElementById('m-print').onclick = () => { closeMenu(); if (needPage()) return; nat('printPage'); };
+                document.getElementById('m-save').onclick = () => { closeMenu(); if (needPage()) return; nat('savePage'); };
+
+                // --- Okuma Modu ---
+                window.onPageEval = function (v) {
+                    if (v === '"none"') showToast('Bu sayfada okuma modu kullanılamıyor');
+                };
+                document.getElementById('m-reader').onclick = () => {
+                    closeMenu();
+                    if (needPage()) return;
+                    nat('evalInPage', '(' + broxReaderMain.toString() + ')()');
+                };
+            } catch (e) { console.log('Brox adim4 hatasi', e); }
+        })();
     </script>
 </body>
 </html>

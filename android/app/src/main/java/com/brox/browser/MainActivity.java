@@ -1,6 +1,21 @@
 package com.brox.browser;
 
 import android.annotation.SuppressLint;
+import android.content.ContentValues;
+import android.content.Context;
+import android.os.Build;
+import android.os.Environment;
+import android.print.PrintAttributes;
+import android.print.PrintDocumentAdapter;
+import android.print.PrintManager;
+import android.provider.MediaStore;
+import android.widget.Toast;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
@@ -37,6 +52,9 @@ public class MainActivity extends BridgeActivity {
     private boolean siteActive = false;
     private boolean overlayOpen = false;
     private boolean fullscreen = false;
+    private boolean desktopMode = false;
+    private boolean barOpen = false;
+    private String mobileUserAgent;
     private View customView;
     private WebChromeClient.CustomViewCallback customViewCallback;
     private ValueCallback<Uri[]> filePathCallback;
@@ -96,6 +114,7 @@ public class MainActivity extends BridgeActivity {
         // Sitelerin "gömülü tarayıcı" diye engellememesi için standart mobil tarayıcı kimliği
         String ua = s.getUserAgentString().replace("; wv", "").replaceAll("Version/\\d+\\.\\d+\\s", "");
         s.setUserAgentString(ua);
+        mobileUserAgent = ua;
 
         CookieManager cm = CookieManager.getInstance();
         cm.setAcceptCookie(true);
@@ -116,6 +135,7 @@ public class MainActivity extends BridgeActivity {
             public void onPageFinished(WebView view, String url) {
                 notifyNav(url, view.getTitle());
                 CookieManager.getInstance().flush();
+                if (desktopMode) applyDesktopViewport(view);
             }
         });
 
@@ -182,6 +202,7 @@ public class MainActivity extends BridgeActivity {
             }
         };
         siteView.setWebChromeClient(chromeClient);
+        siteView.setFindListener((active, total, done) -> notifyFind(active, total));
 
         contentRoot.addView(siteView, new FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
@@ -282,11 +303,141 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
+    // ---------- Adım 4: bul, yakınlaştır, masaüstü, paylaş, yazdır, kaydet ----------
+
+    private void nativeToast(String msg) {
+        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+    }
+
+    private void notifyFind(int active, int total) {
+        if (bridge == null || bridge.getWebView() == null) return;
+        bridge.getWebView().evaluateJavascript(
+            "window.onFindResult && window.onFindResult(" + active + "," + total + ");", null);
+    }
+
+    private void applyDesktopViewport(WebView view) {
+        view.evaluateJavascript("(function(){var m=document.querySelector('meta[name=viewport]');"
+            + "if(m){m.setAttribute('content','width=1024');}"
+            + "else{m=document.createElement('meta');m.name='viewport';m.content='width=1024';document.head.appendChild(m);}})();", null);
+    }
+
+    private void setDesktopModeInternal(boolean enable) {
+        if (siteView == null) return;
+        desktopMode = enable;
+        WebSettings s = siteView.getSettings();
+        if (enable) {
+            String def = mobileUserAgent != null ? mobileUserAgent : s.getUserAgentString();
+            String chrome = "Chrome/120.0.0.0";
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile("Chrome/[\\d.]+").matcher(def);
+            if (m.find()) chrome = m.group();
+            s.setUserAgentString("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) " + chrome + " Safari/537.36");
+        } else if (mobileUserAgent != null) {
+            s.setUserAgentString(mobileUserAgent);
+        }
+        s.setUseWideViewPort(true);
+        s.setLoadWithOverviewMode(true);
+        if (siteActive) siteView.reload();
+    }
+
+    private void shareCurrent() {
+        String url = siteView == null ? null : siteView.getUrl();
+        if (siteView == null || !siteActive || url == null || url.equals("about:blank")) {
+            nativeToast("Paylaşılabilecek sayfa yok");
+            return;
+        }
+        Intent send = new Intent(Intent.ACTION_SEND);
+        send.setType("text/plain");
+        String title = siteView.getTitle();
+        if (title != null && !title.isEmpty()) send.putExtra(Intent.EXTRA_SUBJECT, title);
+        send.putExtra(Intent.EXTRA_TEXT, url);
+        startActivity(Intent.createChooser(send, "Paylaş"));
+    }
+
+    private void printCurrent() {
+        if (siteView == null || !siteActive) {
+            nativeToast("Yazdırılacak sayfa yok");
+            return;
+        }
+        try {
+            PrintManager pm = (PrintManager) getSystemService(Context.PRINT_SERVICE);
+            String title = siteView.getTitle();
+            String name = "Brox - " + (title == null || title.isEmpty() ? "Sayfa" : title);
+            PrintDocumentAdapter adapter = siteView.createPrintDocumentAdapter(name);
+            pm.print(name, adapter, new PrintAttributes.Builder().build());
+        } catch (Exception e) {
+            nativeToast("Yazdırma başlatılamadı");
+        }
+    }
+
+    private String safeName(String title) {
+        String t = (title == null || title.trim().isEmpty()) ? "sayfa" : title.trim();
+        t = t.replaceAll("[\\\\/:*?\"<>|\\n\\r]", "_");
+        if (t.length() > 60) t = t.substring(0, 60);
+        return t;
+    }
+
+    private void copyStream(InputStream in, OutputStream out) throws IOException {
+        byte[] buf = new byte[8192];
+        int n;
+        while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+    }
+
+    private boolean copyToDownloads(File src, String name) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                ContentValues v = new ContentValues();
+                v.put(MediaStore.Downloads.DISPLAY_NAME, name);
+                v.put(MediaStore.Downloads.MIME_TYPE, "application/octet-stream");
+                v.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Brox");
+                Uri uri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, v);
+                if (uri == null) return false;
+                try (OutputStream out = getContentResolver().openOutputStream(uri);
+                     InputStream in = new FileInputStream(src)) {
+                    copyStream(in, out);
+                }
+            } else {
+                File dir = new File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "Brox");
+                dir.mkdirs();
+                try (OutputStream out = new FileOutputStream(new File(dir, name));
+                     InputStream in = new FileInputStream(src)) {
+                    copyStream(in, out);
+                }
+            }
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private void saveCurrent() {
+        if (siteView == null || !siteActive) {
+            nativeToast("Kaydedilecek sayfa yok");
+            return;
+        }
+        final String name = safeName(siteView.getTitle()) + ".mht";
+        final File tmp = new File(getCacheDir(), "kayit_" + System.currentTimeMillis() + ".mht");
+        siteView.saveWebArchive(tmp.getAbsolutePath(), false, path -> {
+            if (path == null) {
+                nativeToast("Sayfa kaydedilemedi");
+                return;
+            }
+            new Thread(() -> {
+                boolean ok = copyToDownloads(tmp, name);
+                tmp.delete();
+                runOnUiThread(() -> nativeToast(ok ? "Sayfa İndirilenler/Brox klasörüne kaydedildi" : "Sayfa kaydedilemedi"));
+            }).start();
+        });
+    }
+
     // ---------- Donanım Geri tuşu ----------
 
     private final OnBackPressedCallback backCallback = new OnBackPressedCallback(true) {
         @Override
         public void handleOnBackPressed() {
+            if (barOpen) {
+                bridge.getWebView().evaluateJavascript("window.closeBars && window.closeBars();", null);
+                return;
+            }
             if (customView != null) {
                 chromeClient.onHideCustomView();
                 return;
@@ -395,6 +546,84 @@ public class MainActivity extends BridgeActivity {
             runOnUiThread(() -> {
                 overlayOpen = open;
                 applySiteVisibility();
+            });
+        }
+
+        @JavascriptInterface
+        public void toast(String msg) {
+            runOnUiThread(() -> nativeToast(msg));
+        }
+
+        @JavascriptInterface
+        public void setBarOpen(boolean open) {
+            runOnUiThread(() -> {
+                barOpen = open;
+            });
+        }
+
+        @JavascriptInterface
+        public void findInPage(String query) {
+            runOnUiThread(() -> {
+                if (siteView == null) return;
+                if (query == null || query.isEmpty()) {
+                    siteView.clearMatches();
+                    notifyFind(0, 0);
+                } else {
+                    siteView.findAllAsync(query);
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void findNext(boolean forward) {
+            runOnUiThread(() -> {
+                if (siteView != null) siteView.findNext(forward);
+            });
+        }
+
+        @JavascriptInterface
+        public void clearFind() {
+            runOnUiThread(() -> {
+                if (siteView != null) siteView.clearMatches();
+            });
+        }
+
+        @JavascriptInterface
+        public void setTextZoom(int percent) {
+            runOnUiThread(() -> {
+                if (siteView != null) siteView.getSettings().setTextZoom(Math.max(25, Math.min(400, percent)));
+            });
+        }
+
+        @JavascriptInterface
+        public void setDesktopMode(boolean enable) {
+            runOnUiThread(() -> setDesktopModeInternal(enable));
+        }
+
+        @JavascriptInterface
+        public void sharePage() {
+            runOnUiThread(() -> shareCurrent());
+        }
+
+        @JavascriptInterface
+        public void printPage() {
+            runOnUiThread(() -> printCurrent());
+        }
+
+        @JavascriptInterface
+        public void savePage() {
+            runOnUiThread(() -> saveCurrent());
+        }
+
+        @JavascriptInterface
+        public void evalInPage(String js) {
+            runOnUiThread(() -> {
+                if (siteView == null || !siteActive || js == null) return;
+                siteView.evaluateJavascript(js, value -> {
+                    if (bridge == null || bridge.getWebView() == null) return;
+                    bridge.getWebView().evaluateJavascript("window.onPageEval && window.onPageEval("
+                        + JSONObject.quote(value == null ? "" : value) + ");", null);
+                });
             });
         }
     }
