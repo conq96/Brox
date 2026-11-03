@@ -90,6 +90,8 @@ public class MainActivity extends BridgeActivity {
         }
 
         setupSiteView();
+        String exitClear = getSharedPreferences("brox_prefs", MODE_PRIVATE).getString("exit_clear", "");
+        if (!exitClear.isEmpty()) clearBrowsingData(exitClear);
         getOnBackPressedDispatcher().addCallback(this, backCallback);
     }
 
@@ -507,6 +509,92 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
+    // ---------- Adım 5b: tarama verilerini silme ----------
+
+    // Site verileri silinirken uygulamanın kendi arayüz verisi (localhost) korunur
+    private void clearSiteStorage(final String host) {
+        final android.webkit.WebStorage ws = android.webkit.WebStorage.getInstance();
+        if (host == null) {
+            ws.getOrigins(new ValueCallback<java.util.Map>() {
+                @Override
+                public void onReceiveValue(java.util.Map map) {
+                    if (map == null) return;
+                    for (Object key : map.keySet()) {
+                        String origin = String.valueOf(key);
+                        if (origin.contains("//localhost")) continue;
+                        ws.deleteOrigin(origin);
+                    }
+                }
+            });
+        } else {
+            for (String scheme : new String[]{"https://", "http://"}) {
+                ws.deleteOrigin(scheme + host);
+                ws.deleteOrigin(scheme + "www." + host);
+            }
+            ws.getOrigins(new ValueCallback<java.util.Map>() {
+                @Override
+                public void onReceiveValue(java.util.Map map) {
+                    if (map == null) return;
+                    for (Object key : map.keySet()) {
+                        String origin = String.valueOf(key);
+                        String h = origin.replaceFirst("^[a-z]+://", "").replaceFirst(":\\d+$", "");
+                        if (h.equals(host) || h.endsWith("." + host)) ws.deleteOrigin(origin);
+                    }
+                }
+            });
+        }
+    }
+
+    private void clearBrowsingData(String typesCsv) {
+        if (typesCsv == null || typesCsv.isEmpty()) return;
+        java.util.List<String> types = java.util.Arrays.asList(typesCsv.split(","));
+        if (types.contains("cookies")) {
+            CookieManager cm = CookieManager.getInstance();
+            cm.removeAllCookies(null);
+            cm.flush();
+        }
+        if (siteView != null) {
+            if (types.contains("cache")) siteView.clearCache(true);
+            if (types.contains("form")) siteView.clearFormData();
+            if (types.contains("history")) siteView.clearHistory();
+        }
+        if (types.contains("form")) {
+            android.webkit.WebViewDatabase.getInstance(this).clearHttpAuthUsernamePassword();
+        }
+        if (types.contains("site")) clearSiteStorage(null);
+    }
+
+    private void clearHostInternal(String host) {
+        if (host == null || !host.matches("[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?")) return;
+        CookieManager cm = CookieManager.getInstance();
+        java.util.List<String> domains = new java.util.ArrayList<>();
+        String[] labels = host.split("\\.");
+        for (int i = 0; i < labels.length - 1; i++) {
+            StringBuilder sb = new StringBuilder();
+            for (int j = i; j < labels.length; j++) {
+                if (j > i) sb.append('.');
+                sb.append(labels[j]);
+            }
+            domains.add(sb.toString());
+        }
+        for (String scheme : new String[]{"https://", "http://"}) {
+            String url = scheme + host + "/";
+            String cookies = cm.getCookie(url);
+            if (cookies == null) continue;
+            for (String pair : cookies.split(";")) {
+                String name = pair.split("=", 2)[0].trim();
+                if (name.isEmpty()) continue;
+                cm.setCookie(url, name + "=; Max-Age=0; Path=/");
+                for (String d : domains) {
+                    cm.setCookie(url, name + "=; Max-Age=0; Path=/; Domain=" + d);
+                    cm.setCookie(url, name + "=; Max-Age=0; Path=/; Domain=." + d);
+                }
+            }
+        }
+        cm.flush();
+        clearSiteStorage(host);
+    }
+
     // ---------- Donanım Geri tuşu ----------
 
     private final OnBackPressedCallback backCallback = new OnBackPressedCallback(true) {
@@ -547,6 +635,10 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onDestroy() {
+        if (isFinishing() && siteView != null) {
+            String exitClear = getSharedPreferences("brox_prefs", MODE_PRIVATE).getString("exit_clear", "");
+            if (!exitClear.isEmpty()) clearBrowsingData(exitClear);
+        }
         if (siteView != null) {
             if (contentRoot != null) contentRoot.removeView(siteView);
             siteView.destroy();
@@ -749,6 +841,22 @@ public class MainActivity extends BridgeActivity {
                 if (f.getCanonicalPath().startsWith(base.getCanonicalPath() + File.separator)) f.delete();
             } catch (Exception ignored) {
             }
+        }
+
+        @JavascriptInterface
+        public void clearData(String typesCsv) {
+            runOnUiThread(() -> clearBrowsingData(typesCsv));
+        }
+
+        @JavascriptInterface
+        public void clearHostData(String host) {
+            runOnUiThread(() -> clearHostInternal(host));
+        }
+
+        @JavascriptInterface
+        public void setExitClear(String typesCsv) {
+            getSharedPreferences("brox_prefs", android.content.Context.MODE_PRIVATE).edit()
+                .putString("exit_clear", typesCsv == null ? "" : typesCsv).apply();
         }
     }
 }

@@ -1181,6 +1181,211 @@
                 };
             } catch (e) { console.log('Brox adim5 hatasi', e); }
         })();
+
+        // BROX-STEP5B: Tarama verileri (otomatik silme) + açık sekmeleri koruma
+        (function () {
+            try {
+                const st = document.createElement('style');
+                st.textContent = `
+                .chk-row { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-main); padding: 4px 0; }
+                .chk-row input { accent-color: #8A8A8A; width: 18px; height: 18px; }
+                .rule-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 12px; color: var(--text-main); }
+                .rule-item small { display: block; color: var(--text-muted); font-size: 10px; margin-top: 2px; }
+                `;
+                document.head.appendChild(st);
+
+                const ssRow = screenshotToggle.closest('.setting-row');
+                ssRow.insertAdjacentHTML('afterend',
+                    '<div class="setting-section-title">Tarama Verileri</div>' +
+                    '<div class="setting-box">' +
+                        '<div class="setting-desc">Silinecek veri türleri</div>' +
+                        '<label class="chk-row"><input type="checkbox" id="ct-history"> Geçmiş</label>' +
+                        '<label class="chk-row"><input type="checkbox" id="ct-cookies"> Çerezler</label>' +
+                        '<label class="chk-row"><input type="checkbox" id="ct-site"> Site verileri</label>' +
+                        '<label class="chk-row"><input type="checkbox" id="ct-cache"> Önbellek</label>' +
+                        '<label class="chk-row"><input type="checkbox" id="ct-form"> Form verileri</label>' +
+                        '<button class="sel-btn" id="clear-now">Şimdi temizle</button>' +
+                    '</div>' +
+                    '<div class="setting-row"><div><div>Otomatik Silme</div><div class="setting-desc">Seçili veri türleri için</div></div>' +
+                        '<select id="autoclear-mode" class="setting-select">' +
+                            '<option value="off">Kapalı</option><option value="exit">Çıkışta</option>' +
+                            '<option value="1">1 gün sonra</option><option value="7">1 hafta sonra</option><option value="30">1 ay sonra</option>' +
+                        '</select></div>' +
+                    '<div class="setting-box">' +
+                        '<div class="setting-desc">Siteye özel otomatik silme (çerezler, site verileri ve geçmiş)</div>' +
+                        '<input type="text" id="rule-host" class="setting-input wide" placeholder="site.com">' +
+                        '<select id="rule-period" class="setting-select" style="max-width:100%;">' +
+                            '<option value="1">1 gün sonra</option><option value="7">1 hafta sonra</option><option value="30">1 ay sonra</option>' +
+                        '</select>' +
+                        '<button class="sel-btn" id="rule-add">Ekle</button>' +
+                    '</div>' +
+                    '<div id="rule-list"></div>' +
+                    '<div class="setting-row"><div><div>Uygulamadan Çıkıldığında Açık Sekmeler</div></div>' +
+                        '<select id="tabs-exit-mode" class="setting-select"><option value="close">Kapansın</option><option value="keep">Korunsun</option></select></div>');
+
+                const TYPES = ['history', 'cookies', 'site', 'cache', 'form'];
+                const DAY = 86400000;
+                const ls = localStorage;
+
+                function nat(name) {
+                    const args = Array.prototype.slice.call(arguments, 1);
+                    if (window.BroxNative && typeof window.BroxNative[name] === 'function') return window.BroxNative[name].apply(window.BroxNative, args);
+                }
+                function selectedTypes() {
+                    const v = ls.getItem('brox_clear_types');
+                    return v === null ? TYPES.slice() : v.split(',').filter(t => TYPES.includes(t));
+                }
+                function clearData(types) {
+                    if (types.includes('history')) ls.removeItem('brox_history');
+                    nat('clearData', types.join(','));
+                }
+                function hostMatches(u, host) {
+                    try { const h = new URL(u).hostname; return h === host || h.endsWith('.' + host); } catch (e) { return false; }
+                }
+                function clearHost(host) {
+                    nat('clearHostData', host);
+                    try {
+                        const h = JSON.parse(ls.getItem('brox_history')) || [];
+                        ls.setItem('brox_history', JSON.stringify(h.filter(e => !hostMatches(e.url, host))));
+                    } catch (e) { }
+                }
+                const loadRules = () => { try { const a = JSON.parse(ls.getItem('brox_clear_rules')); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
+                const saveRules = (a) => ls.setItem('brox_clear_rules', JSON.stringify(a));
+
+                function syncExitClear() {
+                    const mode = ls.getItem('brox_autoclear') || 'off';
+                    nat('setExitClear', mode === 'exit' ? selectedTypes().filter(t => t !== 'history').join(',') : '');
+                }
+                function runAutoClear() {
+                    const mode = ls.getItem('brox_autoclear') || 'off';
+                    const now = Date.now();
+                    if (/^\d+$/.test(mode)) {
+                        const last = parseInt(ls.getItem('brox_autoclear_last'), 10) || 0;
+                        if (!last) ls.setItem('brox_autoclear_last', String(now));
+                        else if (now - last >= parseInt(mode, 10) * DAY) {
+                            clearData(selectedTypes());
+                            ls.setItem('brox_autoclear_last', String(now));
+                        }
+                    }
+                    const rules = loadRules(); let changed = false;
+                    rules.forEach(r => {
+                        if (now - r.last >= r.days * DAY) { clearHost(r.host); r.last = now; changed = true; }
+                    });
+                    if (changed) { saveRules(rules); renderRules(); }
+                }
+
+                // ---------- Ayar arayüzü ----------
+                TYPES.forEach(t => {
+                    const cb = document.getElementById('ct-' + t);
+                    cb.checked = selectedTypes().includes(t);
+                    cb.onchange = () => {
+                        ls.setItem('brox_clear_types', TYPES.filter(x => document.getElementById('ct-' + x).checked).join(','));
+                        syncExitClear();
+                    };
+                });
+
+                const clearNow = document.getElementById('clear-now');
+                let clearTimer = null;
+                clearNow.onclick = () => {
+                    const types = selectedTypes();
+                    if (!types.length) { showToast('Önce silinecek veri türü seçin'); return; }
+                    if (!clearTimer) {
+                        clearNow.textContent = 'Emin misin?';
+                        clearTimer = setTimeout(() => { clearNow.textContent = 'Şimdi temizle'; clearTimer = null; }, 3000);
+                        return;
+                    }
+                    clearTimeout(clearTimer); clearTimer = null; clearNow.textContent = 'Şimdi temizle';
+                    clearData(types);
+                    showToast('Tarama verileri temizlendi');
+                };
+
+                const modeSel = document.getElementById('autoclear-mode');
+                modeSel.value = ls.getItem('brox_autoclear') || 'off';
+                modeSel.onchange = () => {
+                    ls.setItem('brox_autoclear', modeSel.value);
+                    ls.setItem('brox_autoclear_last', String(Date.now()));
+                    syncExitClear();
+                    showToast('Otomatik silme güncellendi');
+                };
+
+                const ruleList = document.getElementById('rule-list');
+                function periodLabel(d) { return d === 1 ? '1 gün' : (d === 7 ? '1 hafta' : '1 ay'); }
+                function renderRules() {
+                    const rules = loadRules();
+                    ruleList.innerHTML = '';
+                    rules.forEach((r, i) => {
+                        const item = document.createElement('div'); item.className = 'rule-item';
+                        const info = document.createElement('div');
+                        info.textContent = r.host + ' · ' + periodLabel(r.days) + ' sonra';
+                        const small = document.createElement('small');
+                        small.textContent = 'Sonraki silme: ' + new Date(r.last + r.days * DAY).toLocaleDateString('tr-TR');
+                        info.appendChild(small);
+                        const del = document.createElement('button'); del.className = 'engine-del'; del.textContent = '×';
+                        del.onclick = () => { const a = loadRules(); a.splice(i, 1); saveRules(a); renderRules(); };
+                        item.appendChild(info); item.appendChild(del);
+                        ruleList.appendChild(item);
+                    });
+                }
+                document.getElementById('rule-add').onclick = () => {
+                    const hostInput = document.getElementById('rule-host');
+                    let host = hostInput.value.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').split(/[\/?#]/)[0];
+                    if (!/^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/.test(host) || host.indexOf('.') < 0) { showToast('Geçerli bir site adresi yazın'); return; }
+                    const days = parseInt(document.getElementById('rule-period').value, 10);
+                    const rules = loadRules();
+                    const existing = rules.find(r => r.host === host);
+                    if (existing) { existing.days = days; existing.last = Date.now(); }
+                    else rules.push({ host: host, days: days, last: Date.now() });
+                    saveRules(rules);
+                    hostInput.value = '';
+                    renderRules();
+                    showToast('Kural eklendi');
+                };
+                renderRules();
+
+                // ---------- Çıkışta silme: önceki oturumun geçmişi başlangıçta temizlenir ----------
+                if ((ls.getItem('brox_autoclear') || 'off') === 'exit' && selectedTypes().includes('history')) ls.removeItem('brox_history');
+                setTimeout(() => { syncExitClear(); runAutoClear(); }, 300);
+
+                // ---------- Açık sekmeleri koru / kapat ----------
+                const TKEY = 'brox_tabs_saved';
+                let tabsRestored = false;
+                const tabsMode = () => ls.getItem('brox_tabs_exit') || 'close';
+                function saveTabsNow() {
+                    if (!tabsRestored || tabsMode() !== 'keep') return;
+                    const list = tabs.filter(t => !t.incognito).map(t => ({ id: t.id, url: t.url || '', title: t.title || '', incognito: false }));
+                    if (!list.length) { ls.removeItem(TKEY); return; }
+                    const active = list.some(t => t.id === activeTabId) ? activeTabId : list[list.length - 1].id;
+                    ls.setItem(TKEY, JSON.stringify({ tabs: list, active: active }));
+                }
+                function restoreTabs() {
+                    try {
+                        if (tabsMode() === 'keep') {
+                            const s = JSON.parse(ls.getItem(TKEY));
+                            if (s && Array.isArray(s.tabs) && s.tabs.length && s.tabs.some(t => t.url)) {
+                                tabs = s.tabs;
+                                activeTabId = tabs.some(t => t.id === s.active) ? s.active : tabs[tabs.length - 1].id;
+                                switchTab(activeTabId);
+                            }
+                        } else {
+                            ls.removeItem(TKEY);
+                        }
+                    } catch (e) { }
+                    tabsRestored = true;
+                }
+                const tabsSel = document.getElementById('tabs-exit-mode');
+                tabsSel.value = tabsMode();
+                tabsSel.onchange = () => {
+                    ls.setItem('brox_tabs_exit', tabsSel.value);
+                    if (tabsSel.value === 'keep') saveTabsNow(); else ls.removeItem(TKEY);
+                    showToast(tabsSel.value === 'keep' ? 'Sekmeler korunacak' : 'Sekmeler kapanacak');
+                };
+                setTimeout(restoreTabs, 120);
+                setInterval(saveTabsNow, 3000);
+                document.addEventListener('visibilitychange', () => {
+                    if (document.hidden) saveTabsNow(); else runAutoClear();
+                });
+            } catch (e) { console.log('Brox adim5b hatasi', e); }
+        })();
     </script>
 </body>
 </html>
