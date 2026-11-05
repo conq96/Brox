@@ -58,6 +58,11 @@ public class MainActivity extends BridgeActivity {
     private boolean fullscreen = false;
     private boolean desktopMode = false;
     private boolean barOpen = false;
+    private boolean forceZoom = false;
+    private android.speech.tts.TextToSpeech tts;
+    private boolean ttsReady = false;
+    private String pendingSpeakLang;
+    private String pendingSpeakText;
     private String mobileUserAgent;
     private View customView;
     private WebChromeClient.CustomViewCallback customViewCallback;
@@ -136,6 +141,7 @@ public class MainActivity extends BridgeActivity {
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
                 notifyNav(url, null);
+                stopSpeaking();
             }
 
             @Override
@@ -143,6 +149,7 @@ public class MainActivity extends BridgeActivity {
                 notifyNav(url, view.getTitle());
                 CookieManager.getInstance().flush();
                 if (desktopMode) applyDesktopViewport(view);
+                if (forceZoom) applyForceZoomScript(view);
             }
         });
 
@@ -595,6 +602,78 @@ public class MainActivity extends BridgeActivity {
         clearSiteStorage(host);
     }
 
+    // ---------- Adım 6: görünüm ve seslendirme ----------
+
+    private void applyForceZoomScript(WebView view) {
+        view.evaluateJavascript("(function(){var m=document.querySelector('meta[name=viewport]');"
+            + "if(!m)return;var c=m.getAttribute('content')||'';"
+            + "c=c.replace(/,?\\s*(user-scalable|maximum-scale|minimum-scale)\\s*=\\s*[^,;]+/ig,'');"
+            + "c=(c+',user-scalable=yes,maximum-scale=10').replace(/^\\s*,/,'');"
+            + "m.setAttribute('content',c);})();", null);
+    }
+
+    @SuppressWarnings("deprecation")
+    private void applyForceDarkInternal(boolean on, boolean reload) {
+        if (siteView == null) return;
+        WebSettings s = siteView.getSettings();
+        if (Build.VERSION.SDK_INT >= 33) {
+            s.setAlgorithmicDarkeningAllowed(on);
+        } else if (Build.VERSION.SDK_INT >= 29) {
+            s.setForceDark(on ? WebSettings.FORCE_DARK_ON : WebSettings.FORCE_DARK_OFF);
+        }
+        if (reload && siteActive) siteView.reload();
+    }
+
+    private void stopSpeaking() {
+        pendingSpeakText = null;
+        if (tts != null && ttsReady) tts.stop();
+    }
+
+    private void startSpeaking(String lang, String text) {
+        pendingSpeakLang = lang;
+        pendingSpeakText = text;
+        if (tts == null) {
+            tts = new android.speech.tts.TextToSpeech(this, status -> runOnUiThread(() -> {
+                ttsReady = (status == android.speech.tts.TextToSpeech.SUCCESS);
+                if (ttsReady) {
+                    speakPending();
+                } else {
+                    if (tts != null) tts.shutdown();
+                    tts = null;
+                    nativeToast("Seslendirme bu cihazda kullanılamıyor");
+                }
+            }));
+        } else if (ttsReady) {
+            speakPending();
+        }
+    }
+
+    private void speakPending() {
+        if (pendingSpeakText == null || tts == null) return;
+        java.util.Locale loc = (pendingSpeakLang == null || pendingSpeakLang.isEmpty())
+            ? java.util.Locale.getDefault() : java.util.Locale.forLanguageTag(pendingSpeakLang);
+        int r = tts.setLanguage(loc);
+        if (r == android.speech.tts.TextToSpeech.LANG_MISSING_DATA || r == android.speech.tts.TextToSpeech.LANG_NOT_SUPPORTED) {
+            tts.setLanguage(java.util.Locale.getDefault());
+        }
+        tts.stop();
+        String text = pendingSpeakText;
+        pendingSpeakText = null;
+        int max = Math.max(500, android.speech.tts.TextToSpeech.getMaxSpeechInputLength() - 100);
+        int i = 0;
+        int n = 0;
+        while (i < text.length()) {
+            int end = Math.min(text.length(), i + max);
+            if (end < text.length()) {
+                int cut = text.lastIndexOf(' ', end);
+                if (cut > i + max / 2) end = cut;
+            }
+            tts.speak(text.substring(i, end), android.speech.tts.TextToSpeech.QUEUE_ADD, null, "brox" + (n++));
+            i = end;
+        }
+        nativeToast("Sayfa seslendiriliyor (durdurmak için tekrar dokunun)");
+    }
+
     // ---------- Donanım Geri tuşu ----------
 
     private final OnBackPressedCallback backCallback = new OnBackPressedCallback(true) {
@@ -635,6 +714,11 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onDestroy() {
+        if (tts != null) {
+            tts.stop();
+            tts.shutdown();
+            tts = null;
+        }
         if (isFinishing() && siteView != null) {
             String exitClear = getSharedPreferences("brox_prefs", MODE_PRIVATE).getString("exit_clear", "");
             if (!exitClear.isEmpty()) clearBrowsingData(exitClear);
@@ -857,6 +941,47 @@ public class MainActivity extends BridgeActivity {
         public void setExitClear(String typesCsv) {
             getSharedPreferences("brox_prefs", android.content.Context.MODE_PRIVATE).edit()
                 .putString("exit_clear", typesCsv == null ? "" : typesCsv).apply();
+        }
+
+        @JavascriptInterface
+        public void setForceDark(boolean on, boolean reload) {
+            runOnUiThread(() -> applyForceDarkInternal(on, reload));
+        }
+
+        @JavascriptInterface
+        public void setForceZoom(boolean on) {
+            runOnUiThread(() -> {
+                forceZoom = on;
+                if (on && siteView != null && siteActive) applyForceZoomScript(siteView);
+            });
+        }
+
+        @JavascriptInterface
+        public void speakPage(String js) {
+            runOnUiThread(() -> {
+                if (tts != null && ttsReady && tts.isSpeaking()) {
+                    tts.stop();
+                    nativeToast("Seslendirme durduruldu");
+                    return;
+                }
+                if (siteView == null || !siteActive || js == null) return;
+                siteView.evaluateJavascript(js, value -> {
+                    try {
+                        Object o = new org.json.JSONTokener(value).nextValue();
+                        String s = o instanceof String ? (String) o : "";
+                        int nl = s.indexOf('\n');
+                        String lang = nl > 0 ? s.substring(0, nl).trim() : "";
+                        String text = nl >= 0 ? s.substring(nl + 1).trim() : s.trim();
+                        if (text.length() < 20) {
+                            nativeToast("Seslendirilecek metin bulunamadı");
+                            return;
+                        }
+                        startSpeaking(lang, text);
+                    } catch (Exception e) {
+                        nativeToast("Seslendirilecek metin bulunamadı");
+                    }
+                });
+            });
         }
     }
 }

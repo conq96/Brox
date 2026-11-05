@@ -1386,6 +1386,187 @@
                 });
             } catch (e) { console.log('Brox adim5b hatasi', e); }
         })();
+
+        // BROX-STEP6: Görünüm ayarları + Seslendir + Tercüme
+        function broxExtractText() {
+            try {
+                var lang = document.documentElement.lang || '';
+                var paras = document.querySelectorAll('p');
+                var map = new Map(); var best = null; var bestScore = 0;
+                for (var i = 0; i < paras.length; i++) {
+                    var txt = (paras[i].innerText || '').trim();
+                    if (txt.length < 40) continue;
+                    var parent = paras[i].parentElement;
+                    if (!parent) continue;
+                    var sc = (map.get(parent) || 0) + txt.length;
+                    map.set(parent, sc);
+                    if (sc > bestScore) { bestScore = sc; best = parent; }
+                }
+                var t = ((best && best.innerText) || '').trim();
+                if (t.length < 200 && document.body) t = (document.body.innerText || '').trim();
+                return lang + '\n' + t.slice(0, 30000);
+            } catch (e) { return ''; }
+        }
+
+        (function () {
+            try {
+                const ls = localStorage;
+                const flag = (k, d) => { const v = ls.getItem(k); return v === null ? d : v === '1'; };
+                const setFlag = (k, v) => ls.setItem(k, v ? '1' : '0');
+                function nat(name) {
+                    const args = Array.prototype.slice.call(arguments, 1);
+                    if (window.BroxNative && typeof window.BroxNative[name] === 'function') return window.BroxNative[name].apply(window.BroxNative, args);
+                }
+
+                const st = document.createElement('style');
+                st.textContent = `
+                .ab-ico { background: none; border: none; padding: 0; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--text-muted); cursor: pointer; border-radius: 6px; }
+                .ab-ico svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+                `;
+                document.head.appendChild(st);
+
+                const SVG = (inner) => '<svg viewBox="0 0 24 24" fill="none">' + inner + '</svg>';
+                const LOCK = SVG('<rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path>');
+                const UNLOCK = SVG('<rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path>');
+                const ICONS = {
+                    refresh: SVG('<path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.59-9.21l5.67-1.36"></path>'),
+                    save: SVG('<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>'),
+                    tts: SVG('<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>')
+                };
+                const TITLES = { refresh: 'Sayfayı Yenile', save: 'Sayfayı Kaydet', tts: 'Seslendir' };
+                const TRANSLATE_ICON = SVG('<line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>');
+                const READER_ICON = SVG('<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>');
+
+                // ---------- Araç çubuğu / adres çubuğu öğeleri ----------
+                menuBtn.insertAdjacentHTML('beforebegin', '<button class="icon-btn" id="toolbar-shortcut-btn" style="display:none;"></button>');
+                urlInput.insertAdjacentHTML('beforebegin', '<span class="ab-ico" id="ab-lock" style="display:none;"></span>');
+                urlInput.insertAdjacentHTML('afterend',
+                    '<button class="ab-ico" id="ab-reader" title="Okuma modu" style="display:none;">' + READER_ICON + '</button>' +
+                    '<button class="ab-ico" id="ab-translate" title="Sayfayı tercüme et" style="display:none;">' + TRANSLATE_ICON + '</button>');
+                const shortcutBtn = document.getElementById('toolbar-shortcut-btn');
+                const lockEl = document.getElementById('ab-lock');
+                const readerEl = document.getElementById('ab-reader');
+                const translateEl = document.getElementById('ab-translate');
+
+                function updateToolbar() {
+                    const browsing = getComputedStyle(homeContent).display === 'none';
+                    const t = tabs.find(x => x.id === activeTabId);
+                    const u = (t && t.url) || '';
+                    const web = /^https?:\/\//i.test(u);
+                    lockEl.style.display = (flag('brox_ab_https', true) && browsing && web) ? 'flex' : 'none';
+                    if (web) {
+                        const secure = /^https:/i.test(u);
+                        lockEl.innerHTML = secure ? LOCK : UNLOCK;
+                        lockEl.title = secure ? 'Bağlantı güvenli (https)' : 'Bağlantı güvenli değil (http)';
+                    }
+                    translateEl.style.display = (flag('brox_ab_translate', false) && browsing && web) ? 'flex' : 'none';
+                    readerEl.style.display = (flag('brox_ab_reader', false) && browsing) ? 'flex' : 'none';
+                    homeToolbarBtn.style.display = flag('brox_ab_home', false) ? 'flex' : 'none';
+                    const sc = ls.getItem('brox_tb_shortcut') || 'none';
+                    if (ICONS[sc]) { shortcutBtn.innerHTML = ICONS[sc]; shortcutBtn.title = TITLES[sc]; shortcutBtn.style.display = 'flex'; }
+                    else shortcutBtn.style.display = 'none';
+                }
+                window.updateToolbarExtras = updateToolbar;
+                new MutationObserver(updateToolbar).observe(homeContent, { attributes: true, attributeFilter: ['style'] });
+
+                const origNav = window.onNativeNav;
+                window.onNativeNav = function (url, title) { if (origNav) origNav(url, title); updateToolbar(); };
+                const origSwitch = switchTab;
+                switchTab = function (id) { const r = origSwitch(id); updateToolbar(); return r; };
+
+                // ---------- Ayarlar > Görünüm ----------
+                function switchRow(id, title, desc) {
+                    return '<div class="setting-row"><div><div>' + title + '</div>' + (desc ? '<div class="setting-desc">' + desc + '</div>' : '') + '</div>' +
+                        '<label class="switch"><input type="checkbox" id="' + id + '"><span class="slider"></span></label></div>';
+                }
+                const LANGS = [['tr', 'Türkçe'], ['en', 'English'], ['de', 'Deutsch'], ['fr', 'Français'], ['es', 'Español'], ['ru', 'Русский'], ['ar', 'العربية']];
+                document.getElementById('newtab-url-row').insertAdjacentHTML('afterend',
+                    '<div class="setting-section-title">Görünüm</div>' +
+                    '<div class="setting-row"><div><div>Araç Çubuğu Kısayolu</div><div class="setting-desc">Menü düğmesinin yanında görünür</div></div>' +
+                        '<select id="tb-shortcut" class="setting-select"><option value="none">Yok</option><option value="refresh">Sayfayı Yenile</option><option value="save">Sayfayı Kaydet</option><option value="tts">Seslendir</option></select></div>' +
+                    switchRow('ab-https', 'Https Göstergesi', 'Adres çubuğunda bağlantı güvenliğini gösterir') +
+                    switchRow('ab-translate-sw', 'Çeviri Düğmesi', 'Adres çubuğunda sayfayı tercüme et düğmesi') +
+                    switchRow('ab-reader-sw', 'Basitleştirilmiş Görünüm', 'Adres çubuğunda okuma modu düğmesi') +
+                    switchRow('ab-home', 'Ana Sayfa Kısayolu', 'Adres çubuğunun yanında ana sayfa düğmesi') +
+                    '<div class="setting-subrow" id="ab-home-url-row" style="display:none;"><input type="text" id="ab-home-url" class="setting-input wide" placeholder="https://site.com (boşsa kısayol ekranı)"></div>' +
+                    switchRow('force-dark', 'Siteleri Karanlık Temaya Zorla', '') +
+                    switchRow('force-zoom', 'Yakınlaştırma Kısıtını Yok Say', 'Sitelerin yakınlaştırmayı engellemesini yok sayar') +
+                    '<div class="setting-row"><div><div>Çeviri Dili</div><div class="setting-desc">Sayfalar bu dile çevrilir</div></div>' +
+                        '<select id="translate-lang" class="setting-select">' + LANGS.map(l => '<option value="' + l[0] + '">' + l[1] + '</option>').join('') + '</select></div>');
+
+                const normalizeUrl = (u) => { u = u.trim(); return /^https?:\/\//i.test(u) ? u : 'https://' + u; };
+                const tbSel = document.getElementById('tb-shortcut');
+                tbSel.value = ls.getItem('brox_tb_shortcut') || 'none';
+                tbSel.onchange = () => { ls.setItem('brox_tb_shortcut', tbSel.value); updateToolbar(); };
+
+                function bindSwitch(id, key, def, after) {
+                    const cb = document.getElementById(id);
+                    cb.checked = flag(key, def);
+                    cb.onchange = () => { setFlag(key, cb.checked); updateToolbar(); if (after) after(cb.checked); };
+                }
+                bindSwitch('ab-https', 'brox_ab_https', true);
+                bindSwitch('ab-translate-sw', 'brox_ab_translate', false);
+                bindSwitch('ab-reader-sw', 'brox_ab_reader', false);
+                const homeRow = document.getElementById('ab-home-url-row');
+                const homeUrlIn = document.getElementById('ab-home-url');
+                bindSwitch('ab-home', 'brox_ab_home', false, (on) => { homeRow.style.display = on ? 'block' : 'none'; });
+                homeRow.style.display = flag('brox_ab_home', false) ? 'block' : 'none';
+                homeUrlIn.value = ls.getItem('brox_ab_home_url') || '';
+                homeUrlIn.onchange = () => {
+                    let v = homeUrlIn.value.trim();
+                    if (v) v = normalizeUrl(v);
+                    homeUrlIn.value = v;
+                    ls.setItem('brox_ab_home_url', v);
+                    showToast(v ? 'Ana sayfa adresi kaydedildi' : 'Ana sayfa: kısayol ekranı');
+                };
+                bindSwitch('force-dark', 'brox_force_dark', false, (on) => { nat('setForceDark', on, true); });
+                bindSwitch('force-zoom', 'brox_force_zoom', false, (on) => { nat('setForceZoom', on); });
+                const langSel = document.getElementById('translate-lang');
+                langSel.value = ls.getItem('brox_translate_lang') || 'tr';
+                langSel.onchange = () => { ls.setItem('brox_translate_lang', langSel.value); };
+
+                // Karanlık tema / yakınlaştırma ayarlarını açılışta uygula (sayfayı yeniden yüklemeden)
+                setTimeout(() => {
+                    if (flag('brox_force_dark', false)) nat('setForceDark', true, false);
+                    if (flag('brox_force_zoom', false)) nat('setForceZoom', true);
+                    updateToolbar();
+                }, 300);
+                updateToolbar();
+
+                // ---------- Düğmelerin işlevleri ----------
+                homeToolbarBtn.onclick = () => {
+                    const u = ls.getItem('brox_ab_home_url') || '';
+                    if (u) { processAndLoad(u); return; }
+                    const t = tabs.find(x => x.id === activeTabId);
+                    if (t) { t.url = ''; t.title = t.incognito ? 'Gizli Sekme' : 'Yeni Sekme'; }
+                    nat('hideWebView');
+                    window.resetBrowser();
+                };
+                shortcutBtn.onclick = () => {
+                    const map = { refresh: 'm-refresh', save: 'm-save', tts: 'm-tts' };
+                    const id = map[ls.getItem('brox_tb_shortcut') || 'none'];
+                    if (id) document.getElementById(id).onclick();
+                };
+                readerEl.onclick = () => document.getElementById('m-reader').onclick();
+
+                function translatePage() {
+                    const t = tabs.find(x => x.id === activeTabId);
+                    const u = (t && t.url) || '';
+                    if (!/^https?:\/\//i.test(u)) { showToast('Önce bir sayfa açın'); return; }
+                    if (/\.translate\.goog|translate\.google\./i.test(u)) { showToast('Bu sayfa zaten çevrilmiş'); return; }
+                    const lang = ls.getItem('brox_translate_lang') || 'tr';
+                    processAndLoad('https://translate.google.com/translate?sl=auto&tl=' + lang + '&u=' + encodeURIComponent(u));
+                }
+                translateEl.onclick = translatePage;
+                document.getElementById('m-translate').onclick = () => { dropdownMenu.style.display = 'none'; translatePage(); };
+
+                document.getElementById('m-tts').onclick = () => {
+                    dropdownMenu.style.display = 'none';
+                    if (getComputedStyle(homeContent).display !== 'none') { showToast('Önce bir sayfa açın'); return; }
+                    nat('speakPage', '(' + broxExtractText.toString() + ')()');
+                };
+            } catch (e) { console.log('Brox adim6 hatasi', e); }
+        })();
     </script>
 </body>
 </html>
