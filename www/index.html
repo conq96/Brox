@@ -1567,6 +1567,143 @@
                 };
             } catch (e) { console.log('Brox adim6 hatasi', e); }
         })();
+
+        // BROX-STEP7: Gizlilik & Güvenlik
+        (function () {
+            try {
+                const ls = localStorage;
+                const flag = (k, d) => { const v = ls.getItem(k); return v === null ? d : v === '1'; };
+                const setFlag = (k, v) => ls.setItem(k, v ? '1' : '0');
+                function nat(name) {
+                    const args = Array.prototype.slice.call(arguments, 1);
+                    if (window.BroxNative && typeof window.BroxNative[name] === 'function') return window.BroxNative[name].apply(window.BroxNative, args);
+                }
+
+                const st = document.createElement('style');
+                st.textContent = `
+                .warn-text { color: var(--text-muted); font-size: 11px; line-height: 1.5; }
+                .block-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 12px; color: var(--text-main); word-break: break-all; }
+                .block-item small { color: var(--text-muted); font-size: 10px; flex-shrink: 0; }
+                `;
+                document.head.appendChild(st);
+
+                function switchRow(id, title, desc) {
+                    return '<div class="setting-row"><div><div>' + title + '</div>' + (desc ? '<div class="setting-desc">' + desc + '</div>' : '') + '</div>' +
+                        '<label class="switch"><input type="checkbox" id="' + id + '"><span class="slider"></span></label></div>';
+                }
+                function selectRow(id, title, desc, options) {
+                    return '<div class="setting-row"><div><div>' + title + '</div>' + (desc ? '<div class="setting-desc">' + desc + '</div>' : '') + '</div>' +
+                        '<select id="' + id + '" class="setting-select">' + options.map(o => '<option value="' + o[0] + '">' + o[1] + '</option>').join('') + '</select></div>';
+                }
+
+                const ssRow = screenshotToggle.closest('.setting-row');
+                ssRow.insertAdjacentHTML('afterend',
+                    selectRow('p-safe', 'Güvenli Tarama', 'Zararlı sitelere karşı koruma', [['standard', 'Standart Koruma'], ['off', 'Koruma Yok (Önerilmez)']]) +
+                    selectRow('p-cookies', 'Çerezler', 'Üçüncü taraf: sitelerin dışarıdan eklediği çerezler', [['allow', 'İzin ver'], ['third', 'Üçüncü taraf'], ['all', 'Tümünü engelle']]) +
+                    switchRow('p-js', 'JavaScript\'i Engelle', 'Birçok site düzgün çalışmayabilir') +
+                    selectRow('p-ads', 'Reklam Engelleme', 'Bilinen reklam ve izleyici adreslerini engeller', [['allow', 'İzin ver'], ['standard', 'Standart engelleme'], ['strict', 'Katı engelleme']]) +
+                    switchRow('p-dnt', 'Do Not Track İsteği', 'Sitelere izlenmek istemediğini bildirir') +
+                    switchRow('p-app', 'Uygulamaya Git İstemlerini Engelle', 'Sitelerin seni uygulamalara yönlendirmesini engeller') +
+                    switchRow('p-only', 'Bağlantıları Sadece Tarayıcıda Aç', 'Hiçbir bağlantı başka bir uygulamayı açmaz') +
+                    '<div class="setting-section-title">İçerik Önleme</div>' +
+                    '<div class="setting-box">' +
+                        '<div class="warn-text">Buraya eklenen site adresi veya kelime bir daha asla açılamaz. Engeli kaldırmak için uygulamayı yeniden yüklemen gerekir.</div>' +
+                        '<input type="text" id="block-input" class="setting-input wide" placeholder="site.com veya kelime">' +
+                        '<button class="sel-btn" id="block-add">Engelle</button>' +
+                        '<div class="setting-desc" id="block-count"></div>' +
+                    '</div>' +
+                    '<div id="block-list"></div>');
+
+                function privacyJson() {
+                    return JSON.stringify({
+                        safeBrowsing: (ls.getItem('brox_p_safe') || 'standard') !== 'off',
+                        cookies: ls.getItem('brox_p_cookies') || 'allow',
+                        js: !flag('brox_p_js', false),
+                        ads: ls.getItem('brox_p_ads') || 'allow',
+                        dnt: flag('brox_p_dnt', false),
+                        blockApp: flag('brox_p_app', false),
+                        onlyBrowser: flag('brox_p_only', false)
+                    });
+                }
+                function applyPrivacy() { nat('applyPrivacy', privacyJson()); }
+
+                function bindSelect(id, key, def, msg) {
+                    const sel = document.getElementById(id);
+                    sel.value = ls.getItem(key) || def;
+                    sel.onchange = () => { ls.setItem(key, sel.value); applyPrivacy(); if (msg) showToast(msg(sel.value)); };
+                }
+                function bindSwitch(id, key) {
+                    const cb = document.getElementById(id);
+                    cb.checked = flag(key, false);
+                    cb.onchange = () => { setFlag(key, cb.checked); applyPrivacy(); };
+                }
+                bindSelect('p-safe', 'brox_p_safe', 'standard', v => v === 'off' ? 'Güvenli tarama kapatıldı (önerilmez)' : 'Güvenli tarama açık');
+                bindSelect('p-cookies', 'brox_p_cookies', 'allow');
+                bindSelect('p-ads', 'brox_p_ads', 'allow');
+                bindSwitch('p-js', 'brox_p_js');
+                bindSwitch('p-dnt', 'brox_p_dnt');
+                bindSwitch('p-app', 'brox_p_app');
+                bindSwitch('p-only', 'brox_p_only');
+                setTimeout(applyPrivacy, 250);
+
+                // ---------- İçerik Önleme (geri alınamaz engel listesi) ----------
+                const blockInput = document.getElementById('block-input');
+                const blockAdd = document.getElementById('block-add');
+                const blockList = document.getElementById('block-list');
+                const blockCount = document.getElementById('block-count');
+
+                function renderBlocklist() {
+                    let list = [];
+                    try { list = JSON.parse(nat('getBlocklist') || '[]'); } catch (e) { }
+                    blockList.innerHTML = '';
+                    blockCount.textContent = list.length ? (list.length + ' engel kayıtlı') : 'Henüz engel eklenmedi';
+                    list.forEach(e => {
+                        const row = document.createElement('div'); row.className = 'block-item';
+                        const t = document.createElement('span'); t.textContent = e.slice(2);
+                        const k = document.createElement('small'); k.textContent = e.charAt(0) === 'h' ? 'site' : 'kelime';
+                        row.appendChild(t); row.appendChild(k);
+                        blockList.appendChild(row);
+                    });
+                }
+                renderBlocklist();
+
+                let armedTimer = null;
+                blockAdd.onclick = () => {
+                    const raw = blockInput.value.trim().toLowerCase();
+                    if (raw.length < 3) { showToast('En az 3 karakter girin'); return; }
+                    const asHost = raw.replace(/^https?:\/\//, '').replace(/^www\./, '').split(/[\/?#]/)[0];
+                    const isHost = /^[a-z0-9]([a-z0-9.-]*[a-z0-9])?\.[a-z0-9-]{2,}$/.test(asHost) && !/\s/.test(raw);
+                    const entry = (isHost ? 'h:' + asHost : 'k:' + raw);
+                    if (!armedTimer) {
+                        blockAdd.textContent = 'Geri alınamaz! Emin misin?';
+                        armedTimer = setTimeout(() => { blockAdd.textContent = 'Engelle'; armedTimer = null; }, 3500);
+                        return;
+                    }
+                    clearTimeout(armedTimer); armedTimer = null; blockAdd.textContent = 'Engelle';
+                    if (nat('addBlockEntry', entry) === true) {
+                        blockInput.value = '';
+                        renderBlocklist();
+                        showToast('Engel eklendi. Geri alınamaz.');
+                    } else {
+                        showToast('Engel eklenemedi');
+                    }
+                };
+
+                // Yazılan adres/kelime engelliyse engel sayfası gösterilir
+                const origProcess = processAndLoad;
+                processAndLoad = function (inputVal) {
+                    if (inputVal && nat('isBlocked', String(inputVal)) === true) {
+                        homeContent.style.display = 'none';
+                        urlInput.value = 'Engellenen sayfa';
+                        const t = tabs.find(x => x.id === activeTabId);
+                        if (t) { t.url = ''; t.title = 'Engellendi'; }
+                        nat('showBlockPage');
+                        return;
+                    }
+                    return origProcess(inputVal);
+                };
+            } catch (e) { console.log('Brox adim7 hatasi', e); }
+        })();
     </script>
 </body>
 </html>

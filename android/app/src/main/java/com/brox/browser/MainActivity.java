@@ -135,13 +135,30 @@ public class MainActivity extends BridgeActivity {
         siteView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                return handleUrl(request.getUrl().toString());
+                String target = request.getUrl().toString();
+                if (isBlockedText(target)) {
+                    if (request.isForMainFrame()) showBlockPageInternal();
+                    return true;
+                }
+                return handleUrl(target);
+            }
+
+            @Override
+            public android.webkit.WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                try {
+                    if (adMode > 0 && !request.isForMainFrame() && isBlockedAdHost(request.getUrl().getHost())) {
+                        return new android.webkit.WebResourceResponse("text/plain", "UTF-8", new java.io.ByteArrayInputStream(new byte[0]));
+                    }
+                } catch (Exception ignored) {
+                }
+                return null;
             }
 
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
                 notifyNav(url, null);
                 stopSpeaking();
+                if (dntEnabled) injectDnt(view);
             }
 
             @Override
@@ -166,7 +183,8 @@ public class MainActivity extends BridgeActivity {
                     @Override
                     public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r) {
                         String u = r.getUrl().toString();
-                        if (!handleUrl(u)) siteView.loadUrl(u);
+                        if (isBlockedText(u)) showBlockPageInternal();
+                        else if (!handleUrl(u)) siteView.loadUrl(u);
                         v.post(v::destroy);
                         return true;
                     }
@@ -231,6 +249,25 @@ public class MainActivity extends BridgeActivity {
         if (lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("about:")
             || lower.startsWith("data:") || lower.startsWith("blob:") || lower.startsWith("javascript:")) {
             return false;
+        }
+        boolean isIntent = lower.startsWith("intent:");
+        boolean simple = lower.startsWith("tel:") || lower.startsWith("mailto:") || lower.startsWith("sms:")
+            || lower.startsWith("smsto:") || lower.startsWith("geo:");
+        if (onlyBrowser || (blockAppPrompts && !simple)) {
+            String fallback = null;
+            if (isIntent) {
+                try {
+                    fallback = Intent.parseUri(url, Intent.URI_INTENT_SCHEME).getStringExtra("browser_fallback_url");
+                } catch (Exception ignored) {
+                }
+            }
+            if (fallback != null && (fallback.startsWith("http://") || fallback.startsWith("https://")) && siteView != null) {
+                if (isBlockedText(fallback)) showBlockPageInternal();
+                else siteView.loadUrl(fallback);
+            } else {
+                nativeToast("Uygulamaya yönlendirme engellendi");
+            }
+            return true;
         }
         try {
             Intent intent = lower.startsWith("intent:")
@@ -674,6 +711,165 @@ public class MainActivity extends BridgeActivity {
         nativeToast("Sayfa seslendiriliyor (durdurmak için tekrar dokunun)");
     }
 
+    // ---------- Adım 7: gizlilik ve güvenlik ----------
+
+    private static final String[] AD_HOSTS = {
+        "doubleclick.net", "googlesyndication.com", "googleadservices.com", "adservice.google.com",
+        "amazon-adsystem.com", "adnxs.com", "rubiconproject.com", "pubmatic.com", "openx.net",
+        "criteo.com", "criteo.net", "taboola.com", "outbrain.com", "adsrvr.org", "casalemedia.com",
+        "smartadserver.com", "advertising.com", "adform.net", "teads.tv", "media.net", "yieldmo.com",
+        "sharethrough.com", "triplelift.com", "indexww.com", "bidswitch.net", "contextweb.com",
+        "sovrn.com", "adcolony.com", "applovin.com", "inmobi.com", "mopub.com", "moatads.com",
+        "2mdn.net", "serving-sys.com", "zedo.com", "revcontent.com", "mgid.com", "adroll.com",
+        "exoclick.com", "propellerads.com", "popads.net", "popcash.net", "adsterra.com",
+        "juicyads.com", "trafficjunky.net", "adtech.com", "adbrite.com", "adblade.com"
+    };
+
+    private static final String[] TRACKER_HOSTS = {
+        "google-analytics.com", "googletagmanager.com", "googletagservices.com", "analytics.google.com",
+        "connect.facebook.net", "scorecardresearch.com", "quantserve.com", "quantcast.com", "hotjar.com",
+        "mixpanel.com", "segment.io", "segment.com", "amplitude.com", "fullstory.com", "mouseflow.com",
+        "crazyegg.com", "chartbeat.com", "optimizely.com", "bat.bing.com", "clarity.ms", "ads-twitter.com",
+        "analytics.twitter.com", "px.ads.linkedin.com", "snap.licdn.com", "analytics.tiktok.com",
+        "tr.snapchat.com", "appsflyer.com", "adjust.com", "kochava.com", "mc.yandex.ru", "mc.yandex.com",
+        "demdex.net", "omtrdc.net", "everesttech.net", "bluekai.com", "krxd.net", "rlcdn.com",
+        "addthis.com", "sharethis.com"
+    };
+
+    private volatile int adMode = 0;
+    private volatile boolean dntEnabled = false;
+    private volatile boolean onlyBrowser = false;
+    private volatile boolean blockAppPrompts = false;
+
+    private boolean hostIn(String host, String[] list) {
+        for (String d : list) {
+            if (host.equals(d) || host.endsWith("." + d)) return true;
+        }
+        return false;
+    }
+
+    private boolean isBlockedAdHost(String host) {
+        int mode = adMode;
+        if (mode == 0 || host == null) return false;
+        String h = host.toLowerCase(java.util.Locale.ROOT);
+        return hostIn(h, AD_HOSTS) || (mode >= 2 && hostIn(h, TRACKER_HOSTS));
+    }
+
+    private java.util.List<String> blockList() {
+        java.util.List<String> out = new java.util.ArrayList<>();
+        try {
+            JSONArray arr = new JSONArray(getSharedPreferences("brox_block", MODE_PRIVATE).getString("list", "[]"));
+            for (int i = 0; i < arr.length(); i++) out.add(arr.getString(i));
+        } catch (Exception ignored) {
+        }
+        return out;
+    }
+
+    private boolean isBlockedText(String raw) {
+        if (raw == null || raw.isEmpty()) return false;
+        String s;
+        try {
+            s = java.net.URLDecoder.decode(raw, "UTF-8");
+        } catch (Exception e) {
+            s = raw;
+        }
+        s = s.toLowerCase(java.util.Locale.ROOT);
+        String host = "";
+        try {
+            String hh = Uri.parse(raw).getHost();
+            if (hh != null) host = hh.toLowerCase(java.util.Locale.ROOT);
+        } catch (Exception ignored) {
+        }
+        for (String e : blockList()) {
+            if (e.length() < 3) continue;
+            String val = e.substring(2);
+            if (e.startsWith("h:")) {
+                if (host.equals(val) || host.endsWith("." + val)) return true;
+                if (host.isEmpty() && s.contains(val)) return true;
+            } else if (e.startsWith("k:")) {
+                if (s.contains(val)) return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean addBlockEntryInternal(String entryRaw) {
+        if (entryRaw == null) return false;
+        String entry = entryRaw.trim().toLowerCase(java.util.Locale.ROOT);
+        boolean isHost = entry.startsWith("h:");
+        boolean isKeyword = entry.startsWith("k:");
+        if (!isHost && !isKeyword) return false;
+        String val = entry.substring(2);
+        if (val.length() < 3 || val.length() > 100) return false;
+        if (isHost && !val.matches("[a-z0-9]([a-z0-9.-]*[a-z0-9])?\\.[a-z0-9-]{2,}")) return false;
+        try {
+            android.content.SharedPreferences sp = getSharedPreferences("brox_block", MODE_PRIVATE);
+            JSONArray arr = new JSONArray(sp.getString("list", "[]"));
+            for (int i = 0; i < arr.length(); i++) {
+                if (entry.equals(arr.getString(i))) return true;
+            }
+            arr.put(entry);
+            sp.edit().putString("list", arr.toString()).apply();
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private void showBlockPageInternal() {
+        if (siteView == null) return;
+        String html = "<!doctype html><html><head><meta charset='utf-8'>"
+            + "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+            + "<style>html,body{margin:0;height:100%;background:#000;color:#B0B0B0;font-family:sans-serif}"
+            + "body{display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;box-sizing:border-box}"
+            + "h1{font-size:20px;font-weight:600;margin:0 0 10px}p{font-size:14px;color:#8A8A8A;margin:0}</style></head>"
+            + "<body><div><h1>Girmemeniz gereken bir URL veya kelime yazdınız!</h1><p>Bu içerik engellendi.</p></div></body></html>";
+        siteActive = true;
+        applySiteVisibility();
+        relayoutSite();
+        siteView.loadDataWithBaseURL(null, html, "text/html", "UTF-8", null);
+    }
+
+    private void loadWithHeaders(String url) {
+        if (dntEnabled && (url.startsWith("http://") || url.startsWith("https://"))) {
+            java.util.Map<String, String> headers = new java.util.HashMap<>();
+            headers.put("DNT", "1");
+            headers.put("Sec-GPC", "1");
+            siteView.loadUrl(url, headers);
+        } else {
+            siteView.loadUrl(url);
+        }
+    }
+
+    private void injectDnt(WebView view) {
+        view.evaluateJavascript("try{Object.defineProperty(navigator,'doNotTrack',{get:function(){return '1';}});"
+            + "Object.defineProperty(navigator,'globalPrivacyControl',{get:function(){return true;}});}catch(e){}", null);
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
+    private void applyPrivacyInternal(String json) {
+        if (siteView == null || json == null) return;
+        try {
+            JSONObject o = new JSONObject(json);
+            WebSettings s = siteView.getSettings();
+            if (Build.VERSION.SDK_INT >= 26) s.setSafeBrowsingEnabled(o.optBoolean("safeBrowsing", true));
+            String cookies = o.optString("cookies", "allow");
+            CookieManager cm = CookieManager.getInstance();
+            cm.setAcceptCookie(!cookies.equals("all"));
+            cm.setAcceptThirdPartyCookies(siteView, cookies.equals("allow"));
+            boolean js = o.optBoolean("js", true);
+            boolean jsChanged = s.getJavaScriptEnabled() != js;
+            s.setJavaScriptEnabled(js);
+            String ads = o.optString("ads", "allow");
+            adMode = ads.equals("strict") ? 2 : (ads.equals("standard") ? 1 : 0);
+            dntEnabled = o.optBoolean("dnt", false);
+            onlyBrowser = o.optBoolean("onlyBrowser", false);
+            blockAppPrompts = o.optBoolean("blockApp", false);
+            if (jsChanged && siteActive) siteView.reload();
+        } catch (Exception ignored) {
+        }
+    }
+
     // ---------- Donanım Geri tuşu ----------
 
     private final OnBackPressedCallback backCallback = new OnBackPressedCallback(true) {
@@ -762,7 +958,11 @@ public class MainActivity extends BridgeActivity {
                 siteActive = true;
                 applySiteVisibility();
                 relayoutSite();
-                siteView.loadUrl(url);
+                if (isBlockedText(url)) {
+                    showBlockPageInternal();
+                    return;
+                }
+                loadWithHeaders(url);
             });
         }
 
@@ -982,6 +1182,31 @@ public class MainActivity extends BridgeActivity {
                     }
                 });
             });
+        }
+
+        @JavascriptInterface
+        public void applyPrivacy(String json) {
+            runOnUiThread(() -> applyPrivacyInternal(json));
+        }
+
+        @JavascriptInterface
+        public boolean isBlocked(String text) {
+            return isBlockedText(text);
+        }
+
+        @JavascriptInterface
+        public boolean addBlockEntry(String entry) {
+            return addBlockEntryInternal(entry);
+        }
+
+        @JavascriptInterface
+        public String getBlocklist() {
+            return new JSONArray(blockList()).toString();
+        }
+
+        @JavascriptInterface
+        public void showBlockPage() {
+            runOnUiThread(() -> showBlockPageInternal());
         }
     }
 }
