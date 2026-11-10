@@ -59,6 +59,16 @@ public class MainActivity extends BridgeActivity {
     private boolean desktopMode = false;
     private boolean barOpen = false;
     private boolean forceZoom = false;
+    private final java.util.LinkedHashMap<String, WebView> tabViews = new java.util.LinkedHashMap<>();
+    private String activeTabKey = "";
+    private boolean skipLoadOnce = false;
+    private WebView utilView;
+    private int currentTextZoom = 100;
+    private boolean currentForceDark = false;
+    private String lastPrivacyJson = null;
+    private boolean backgroundPlayback = true;
+    private boolean bgServiceRunning = false;
+    private static final int MAX_TAB_VIEWS = 10;
     private android.speech.tts.TextToSpeech tts;
     private boolean ttsReady = false;
     private String pendingSpeakLang;
@@ -94,7 +104,8 @@ public class MainActivity extends BridgeActivity {
             });
         }
 
-        setupSiteView();
+        contentRoot = findViewById(android.R.id.content);
+        BackgroundPlaybackService.stopMediaHook = () -> runOnUiThread(this::pauseAllMedia);
         String exitClear = getSharedPreferences("brox_prefs", MODE_PRIVATE).getString("exit_clear", "");
         if (!exitClear.isEmpty()) clearBrowsingData(exitClear);
         getOnBackPressedDispatcher().addCallback(this, backCallback);
@@ -103,9 +114,10 @@ public class MainActivity extends BridgeActivity {
     // ---------- Site WebView (gerçek tarayıcı motoru) ----------
 
     @SuppressLint("SetJavaScriptEnabled")
-    private void setupSiteView() {
+    private WebView createSiteWebView() {
         contentRoot = findViewById(android.R.id.content);
-        siteView = new WebView(this);
+        // Her sekmenin kendi WebView'ı vardır (bu yerel değişken, sınıftaki siteView alanını gölgeler)
+        final WebView siteView = new WebView(this);
         siteView.setBackgroundColor(Color.BLACK);
         siteView.setVisibility(View.GONE);
 
@@ -137,7 +149,7 @@ public class MainActivity extends BridgeActivity {
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String target = request.getUrl().toString();
                 if (isBlockedText(target)) {
-                    if (request.isForMainFrame()) showBlockPageInternal();
+                    if (request.isForMainFrame()) loadBlockPage(view);
                     return true;
                 }
                 return handleUrl(target);
@@ -156,15 +168,19 @@ public class MainActivity extends BridgeActivity {
 
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
-                notifyNav(url, null);
-                stopSpeaking();
+                if (view == MainActivity.this.siteView) {
+                    notifyNav(url, null);
+                    stopSpeaking();
+                }
                 if (dntEnabled) injectDnt(view);
+                injectBackgroundScript(view);
             }
 
             @Override
             public void onPageFinished(WebView view, String url) {
-                notifyNav(url, view.getTitle());
+                if (view == MainActivity.this.siteView) notifyNav(url, view.getTitle());
                 CookieManager.getInstance().flush();
+                injectBackgroundScript(view);
                 if (desktopMode) applyDesktopViewport(view);
                 if (forceZoom) applyForceZoomScript(view);
             }
@@ -172,8 +188,13 @@ public class MainActivity extends BridgeActivity {
 
         chromeClient = new WebChromeClient() {
             @Override
+            public void onProgressChanged(WebView view, int newProgress) {
+                if (newProgress < 100) injectBackgroundScript(view);
+            }
+
+            @Override
             public void onReceivedTitle(WebView view, String title) {
-                notifyNav(view.getUrl(), title);
+                if (view == MainActivity.this.siteView) notifyNav(view.getUrl(), title);
             }
 
             @Override
@@ -183,7 +204,7 @@ public class MainActivity extends BridgeActivity {
                     @Override
                     public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r) {
                         String u = r.getUrl().toString();
-                        if (isBlockedText(u)) showBlockPageInternal();
+                        if (isBlockedText(u)) loadBlockPage(siteView);
                         else if (!handleUrl(u)) siteView.loadUrl(u);
                         v.post(v::destroy);
                         return true;
@@ -234,12 +255,21 @@ public class MainActivity extends BridgeActivity {
             }
         };
         siteView.setWebChromeClient(chromeClient);
-        siteView.setFindListener((active, total, done) -> notifyFind(active, total));
+        siteView.setFindListener((active, total, done) -> {
+            if (siteView == MainActivity.this.siteView) notifyFind(active, total);
+        });
         siteView.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) ->
             startDownload(url, userAgent, contentDisposition, mimeType));
 
         contentRoot.addView(siteView, new FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        // Yeni sekme görünümüne geçerli ayarlar uygulanır
+        if (desktopMode) applyDesktopUa(siteView);
+        s.setTextZoom(currentTextZoom);
+        applyDarkTo(siteView, currentForceDark);
+        if (lastPrivacyJson != null) applyPrivacyTo(siteView, lastPrivacyJson);
+        return siteView;
     }
 
     // http/https dışındaki bağlantıları (tel:, mailto:, intent: ...) ilgili uygulamaya yönlendirir
@@ -324,20 +354,165 @@ public class MainActivity extends BridgeActivity {
     }
 
     private void applySiteVisibility() {
-        if (siteView == null) return;
-        if (!siteActive) siteView.setVisibility(View.GONE);
-        else siteView.setVisibility(overlayOpen ? View.INVISIBLE : View.VISIBLE);
+        for (WebView w : tabViews.values()) {
+            if (siteActive && w == siteView) w.setVisibility(overlayOpen ? View.INVISIBLE : View.VISIBLE);
+            else w.setVisibility(View.GONE);
+        }
     }
 
+    // Etkin sekmenin sayfasını kapatır (kısayol ekranına dönüş); diğer sekmeler çalışmaya devam eder
     private void goHome(boolean notifyUi) {
+        WebView v = siteView;
+        if (v != null) {
+            tabViews.remove(activeTabKey);
+            destroyTabView(v);
+        }
+        siteView = null;
         siteActive = false;
-        siteView.stopLoading();
-        siteView.loadUrl("about:blank");
-        siteView.clearHistory();
         applySiteVisibility();
         if (notifyUi && bridge != null && bridge.getWebView() != null) {
             bridge.getWebView().evaluateJavascript("window.resetBrowser && window.resetBrowser();", null);
         }
+    }
+
+    // ---------- Sekme başına canlı sayfalar (arka planda oynatma için) ----------
+
+    private void destroyTabView(WebView v) {
+        try {
+            v.stopLoading();
+            v.loadUrl("about:blank");
+            if (contentRoot != null) contentRoot.removeView(v);
+            v.destroy();
+        } catch (Exception ignored) {
+        }
+    }
+
+    private WebView ensureActiveView() {
+        if (activeTabKey == null || activeTabKey.isEmpty()) activeTabKey = "default";
+        WebView v = tabViews.get(activeTabKey);
+        if (v == null) {
+            v = createSiteWebView();
+        } else {
+            tabViews.remove(activeTabKey);
+        }
+        tabViews.put(activeTabKey, v);
+        siteView = v;
+        siteActive = true;
+        trimTabViews();
+        return v;
+    }
+
+    private void trimTabViews() {
+        while (tabViews.size() > MAX_TAB_VIEWS) {
+            String victim = null;
+            for (String k : tabViews.keySet()) {
+                if (!k.equals(activeTabKey)) {
+                    victim = k;
+                    break;
+                }
+            }
+            if (victim == null) break;
+            destroyTabView(tabViews.remove(victim));
+        }
+    }
+
+    private void selectTabInternal(String key) {
+        String prev = activeTabKey;
+        activeTabKey = key == null ? "" : key;
+        WebView v = tabViews.get(activeTabKey);
+        boolean adopted = false;
+        if (v == null && "default".equals(prev) && !"default".equals(activeTabKey) && tabViews.containsKey("default")) {
+            v = tabViews.remove("default");
+            adopted = true;
+        }
+        if (v != null) {
+            tabViews.remove(activeTabKey);
+            tabViews.put(activeTabKey, v);
+            siteView = v;
+            siteActive = true;
+            if (!adopted) {
+                skipLoadOnce = true;
+                if (contentRoot != null) contentRoot.postDelayed(() -> skipLoadOnce = false, 1500);
+            }
+            applySiteVisibility();
+            relayoutSite();
+            notifyNav(v.getUrl(), v.getTitle());
+        } else {
+            siteView = null;
+            siteActive = false;
+            skipLoadOnce = false;
+            applySiteVisibility();
+        }
+    }
+
+    private void syncTabViews(String idsCsv) {
+        java.util.Set<String> keep = new java.util.HashSet<>();
+        if (idsCsv != null && !idsCsv.isEmpty()) keep.addAll(java.util.Arrays.asList(idsCsv.split(",")));
+        java.util.List<String> drop = new java.util.ArrayList<>();
+        for (String k : tabViews.keySet()) {
+            if (!keep.contains(k)) drop.add(k);
+        }
+        for (String k : drop) {
+            WebView v = tabViews.remove(k);
+            if (v == siteView) {
+                siteView = null;
+                siteActive = false;
+            }
+            destroyTabView(v);
+        }
+        if (!drop.isEmpty()) applySiteVisibility();
+    }
+
+    // Etkin sayfa yokken bile tüm WebView'lara ortak işlemler (önbellek vb.) için bir görünüm döndürür
+    private WebView anyView() {
+        if (siteView != null) return siteView;
+        for (WebView w : tabViews.values()) return w;
+        if (utilView == null) utilView = new WebView(this);
+        return utilView;
+    }
+
+    // ---------- Arka planda oynatma ----------
+
+    private static final String BG_SCRIPT = "(function(){try{if(window.__broxBg)return;window.__broxBg=true;var d=document;"
+        + "function def(o,k,v){try{Object.defineProperty(o,k,{get:function(){return v;},configurable:true});}catch(e){}}"
+        + "def(d,'hidden',false);def(d,'visibilityState','visible');def(d,'webkitHidden',false);def(d,'webkitVisibilityState','visible');"
+        + "try{d.hasFocus=function(){return true;};}catch(e){}"
+        + "var stop=function(e){e.stopImmediatePropagation();};"
+        + "var stopWin=function(e){if(e.target===window||e.target===document)e.stopImmediatePropagation();};"
+        + "d.addEventListener('visibilitychange',stop,true);d.addEventListener('webkitvisibilitychange',stop,true);"
+        + "window.addEventListener('blur',stopWin,true);window.addEventListener('pagehide',stopWin,true);"
+        + "}catch(e){}})();";
+
+    private void injectBackgroundScript(WebView v) {
+        if (backgroundPlayback && v != null) v.evaluateJavascript(BG_SCRIPT, null);
+    }
+
+    private void pauseAllMedia() {
+        for (WebView w : tabViews.values()) {
+            w.evaluateJavascript("(function(){var l=document.querySelectorAll('video,audio');"
+                + "for(var i=0;i<l.length;i++){try{l[i].pause();}catch(e){}}})();", null);
+        }
+    }
+
+    private void startBackgroundService() {
+        if (!backgroundPlayback || bgServiceRunning) return;
+        try {
+            android.media.AudioManager am = (android.media.AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            if (am == null || !am.isMusicActive()) return;
+            Intent i = new Intent(this, BackgroundPlaybackService.class);
+            if (Build.VERSION.SDK_INT >= 26) startForegroundService(i);
+            else startService(i);
+            bgServiceRunning = true;
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void stopBackgroundService() {
+        try {
+            stopService(new Intent(this, BackgroundPlaybackService.class));
+        } catch (Exception ignored) {
+        }
+        bgServiceRunning = false;
     }
 
     @SuppressWarnings("deprecation")
@@ -374,11 +549,9 @@ public class MainActivity extends BridgeActivity {
             + "else{m=document.createElement('meta');m.name='viewport';m.content='width=1024';document.head.appendChild(m);}})();", null);
     }
 
-    private void setDesktopModeInternal(boolean enable) {
-        if (siteView == null) return;
-        desktopMode = enable;
-        WebSettings s = siteView.getSettings();
-        if (enable) {
+    private void applyDesktopUa(WebView v) {
+        WebSettings s = v.getSettings();
+        if (desktopMode) {
             String def = mobileUserAgent != null ? mobileUserAgent : s.getUserAgentString();
             String chrome = "Chrome/120.0.0.0";
             java.util.regex.Matcher m = java.util.regex.Pattern.compile("Chrome/[\\d.]+").matcher(def);
@@ -389,7 +562,12 @@ public class MainActivity extends BridgeActivity {
         }
         s.setUseWideViewPort(true);
         s.setLoadWithOverviewMode(true);
-        if (siteActive) siteView.reload();
+    }
+
+    private void setDesktopModeInternal(boolean enable) {
+        desktopMode = enable;
+        for (WebView w : tabViews.values()) applyDesktopUa(w);
+        if (siteView != null && siteActive) siteView.reload();
     }
 
     private void shareCurrent() {
@@ -597,10 +775,11 @@ public class MainActivity extends BridgeActivity {
             cm.removeAllCookies(null);
             cm.flush();
         }
-        if (siteView != null) {
-            if (types.contains("cache")) siteView.clearCache(true);
-            if (types.contains("form")) siteView.clearFormData();
-            if (types.contains("history")) siteView.clearHistory();
+        WebView any = anyView();
+        if (types.contains("cache")) any.clearCache(true);
+        if (types.contains("form")) any.clearFormData();
+        if (types.contains("history")) {
+            for (WebView w : tabViews.values()) w.clearHistory();
         }
         if (types.contains("form")) {
             android.webkit.WebViewDatabase.getInstance(this).clearHttpAuthUsernamePassword();
@@ -650,15 +829,19 @@ public class MainActivity extends BridgeActivity {
     }
 
     @SuppressWarnings("deprecation")
-    private void applyForceDarkInternal(boolean on, boolean reload) {
-        if (siteView == null) return;
-        WebSettings s = siteView.getSettings();
+    private void applyDarkTo(WebView v, boolean on) {
+        WebSettings s = v.getSettings();
         if (Build.VERSION.SDK_INT >= 33) {
             s.setAlgorithmicDarkeningAllowed(on);
         } else if (Build.VERSION.SDK_INT >= 29) {
             s.setForceDark(on ? WebSettings.FORCE_DARK_ON : WebSettings.FORCE_DARK_OFF);
         }
-        if (reload && siteActive) siteView.reload();
+    }
+
+    private void applyForceDarkInternal(boolean on, boolean reload) {
+        currentForceDark = on;
+        for (WebView w : tabViews.values()) applyDarkTo(w, on);
+        if (reload && siteView != null && siteActive) siteView.reload();
     }
 
     private void stopSpeaking() {
@@ -816,18 +999,22 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
-    private void showBlockPageInternal() {
-        if (siteView == null) return;
+    private void loadBlockPage(WebView v) {
+        if (v == null) return;
         String html = "<!doctype html><html><head><meta charset='utf-8'>"
             + "<meta name='viewport' content='width=device-width,initial-scale=1'>"
             + "<style>html,body{margin:0;height:100%;background:#000;color:#B0B0B0;font-family:sans-serif}"
             + "body{display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;box-sizing:border-box}"
             + "h1{font-size:20px;font-weight:600;margin:0 0 10px}p{font-size:14px;color:#8A8A8A;margin:0}</style></head>"
             + "<body><div><h1>Girmemeniz gereken bir URL veya kelime yazdınız!</h1><p>Bu içerik engellendi.</p></div></body></html>";
-        siteActive = true;
+        v.loadDataWithBaseURL(null, html, "text/html", "UTF-8", null);
+    }
+
+    private void showBlockPageInternal() {
+        WebView v = ensureActiveView();
         applySiteVisibility();
         relayoutSite();
-        siteView.loadDataWithBaseURL(null, html, "text/html", "UTF-8", null);
+        loadBlockPage(v);
     }
 
     private void loadWithHeaders(String url) {
@@ -847,27 +1034,34 @@ public class MainActivity extends BridgeActivity {
     }
 
     @SuppressLint("SetJavaScriptEnabled")
-    private void applyPrivacyInternal(String json) {
-        if (siteView == null || json == null) return;
+    private void applyPrivacyTo(WebView v, String json) {
         try {
             JSONObject o = new JSONObject(json);
-            WebSettings s = siteView.getSettings();
+            WebSettings s = v.getSettings();
             if (Build.VERSION.SDK_INT >= 26) s.setSafeBrowsingEnabled(o.optBoolean("safeBrowsing", true));
-            String cookies = o.optString("cookies", "allow");
-            CookieManager cm = CookieManager.getInstance();
-            cm.setAcceptCookie(!cookies.equals("all"));
-            cm.setAcceptThirdPartyCookies(siteView, cookies.equals("allow"));
+            CookieManager.getInstance().setAcceptThirdPartyCookies(v, o.optString("cookies", "allow").equals("allow"));
             boolean js = o.optBoolean("js", true);
             boolean jsChanged = s.getJavaScriptEnabled() != js;
             s.setJavaScriptEnabled(js);
+            if (jsChanged && v == siteView && siteActive) v.reload();
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void applyPrivacyInternal(String json) {
+        if (json == null) return;
+        lastPrivacyJson = json;
+        try {
+            JSONObject o = new JSONObject(json);
+            CookieManager.getInstance().setAcceptCookie(!o.optString("cookies", "allow").equals("all"));
             String ads = o.optString("ads", "allow");
             adMode = ads.equals("strict") ? 2 : (ads.equals("standard") ? 1 : 0);
             dntEnabled = o.optBoolean("dnt", false);
             onlyBrowser = o.optBoolean("onlyBrowser", false);
             blockAppPrompts = o.optBoolean("blockApp", false);
-            if (jsChanged && siteActive) siteView.reload();
         } catch (Exception ignored) {
         }
+        for (WebView w : tabViews.values()) applyPrivacyTo(w, json);
     }
 
     // ---------- Donanım Geri tuşu ----------
@@ -909,20 +1103,36 @@ public class MainActivity extends BridgeActivity {
     };
 
     @Override
+    public void onPause() {
+        super.onPause();
+        startBackgroundService();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        stopBackgroundService();
+    }
+
+    @Override
     public void onDestroy() {
+        BackgroundPlaybackService.stopMediaHook = null;
+        stopBackgroundService();
         if (tts != null) {
             tts.stop();
             tts.shutdown();
             tts = null;
         }
-        if (isFinishing() && siteView != null) {
+        if (isFinishing()) {
             String exitClear = getSharedPreferences("brox_prefs", MODE_PRIVATE).getString("exit_clear", "");
             if (!exitClear.isEmpty()) clearBrowsingData(exitClear);
         }
-        if (siteView != null) {
-            if (contentRoot != null) contentRoot.removeView(siteView);
-            siteView.destroy();
-            siteView = null;
+        for (WebView w : new java.util.ArrayList<>(tabViews.values())) destroyTabView(w);
+        tabViews.clear();
+        siteView = null;
+        if (utilView != null) {
+            utilView.destroy();
+            utilView = null;
         }
         super.onDestroy();
     }
@@ -954,8 +1164,14 @@ public class MainActivity extends BridgeActivity {
         @JavascriptInterface
         public void loadUrl(String url) {
             runOnUiThread(() -> {
-                if (siteView == null || url == null) return;
-                siteActive = true;
+                if (url == null) return;
+                if (skipLoadOnce && siteView != null) {
+                    skipLoadOnce = false;
+                    applySiteVisibility();
+                    relayoutSite();
+                    return;
+                }
+                ensureActiveView();
                 applySiteVisibility();
                 relayoutSite();
                 if (isBlockedText(url)) {
@@ -1046,7 +1262,8 @@ public class MainActivity extends BridgeActivity {
         @JavascriptInterface
         public void setTextZoom(int percent) {
             runOnUiThread(() -> {
-                if (siteView != null) siteView.getSettings().setTextZoom(Math.max(25, Math.min(400, percent)));
+                currentTextZoom = Math.max(25, Math.min(400, percent));
+                for (WebView w : tabViews.values()) w.getSettings().setTextZoom(currentTextZoom);
             });
         }
 
@@ -1207,6 +1424,24 @@ public class MainActivity extends BridgeActivity {
         @JavascriptInterface
         public void showBlockPage() {
             runOnUiThread(() -> showBlockPageInternal());
+        }
+
+        @JavascriptInterface
+        public void selectTab(String id) {
+            runOnUiThread(() -> selectTabInternal(id));
+        }
+
+        @JavascriptInterface
+        public void syncTabs(String idsCsv) {
+            runOnUiThread(() -> syncTabViews(idsCsv));
+        }
+
+        @JavascriptInterface
+        public void setBackgroundPlayback(boolean on) {
+            runOnUiThread(() -> {
+                backgroundPlayback = on;
+                if (!on) stopBackgroundService();
+            });
         }
     }
 }

@@ -1704,6 +1704,47 @@
                 };
             } catch (e) { console.log('Brox adim7 hatasi', e); }
         })();
+
+        // BROX-BG: arka planda oynatma + sekme başına canlı sayfa
+        (function () {
+            try {
+                const ls = localStorage;
+                const flag = (k, d) => { const v = ls.getItem(k); return v === null ? d : v === '1'; };
+                function nat(name) {
+                    const args = Array.prototype.slice.call(arguments, 1);
+                    if (window.BroxNative && typeof window.BroxNative[name] === 'function') return window.BroxNative[name].apply(window.BroxNative, args);
+                }
+                function syncTabs() { nat('syncTabs', tabs.map(t => String(t.id)).join(',')); }
+
+                // Etkin sekmeyi hemen bildir (açılışta yüklenen sayfa doğru sekmeye bağlansın)
+                nat('selectTab', String(activeTabId));
+                nat('setBackgroundPlayback', flag('brox_bg_play', true));
+
+                const origSwitch = switchTab;
+                switchTab = function (id) {
+                    nat('selectTab', String(id));
+                    const r = origSwitch(id);
+                    syncTabs();
+                    return r;
+                };
+                const origRender = renderTabs;
+                renderTabs = function () { origRender(); syncTabs(); };
+                setTimeout(syncTabs, 400);
+
+                // Ayar: Arka Planda Oynat
+                const langRow = document.getElementById('translate-lang').closest('.setting-row');
+                langRow.insertAdjacentHTML('afterend',
+                    '<div class="setting-row"><div><div>Arka Planda Oynat</div><div class="setting-desc">Uygulama arka plandayken veya sekme değişince video ve ses devam eder</div></div>' +
+                    '<label class="switch"><input type="checkbox" id="bg-play"><span class="slider"></span></label></div>');
+                const cb = document.getElementById('bg-play');
+                cb.checked = flag('brox_bg_play', true);
+                cb.onchange = () => {
+                    ls.setItem('brox_bg_play', cb.checked ? '1' : '0');
+                    nat('setBackgroundPlayback', cb.checked);
+                    showToast(cb.checked ? 'Arka planda oynatma açık' : 'Arka planda oynatma kapalı');
+                };
+            } catch (e) { console.log('Brox bg hatasi', e); }
+        })();
     </script>
 </body>
 </html>
