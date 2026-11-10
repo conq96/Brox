@@ -1745,6 +1745,87 @@
                 };
             } catch (e) { console.log('Brox bg hatasi', e); }
         })();
+
+        // BROX-STEP7C: Site İzinleri + Güvenli DNS
+        (function () {
+            try {
+                const ls = localStorage;
+                function nat(name) {
+                    const args = Array.prototype.slice.call(arguments, 1);
+                    if (window.BroxNative && typeof window.BroxNative[name] === 'function') return window.BroxNative[name].apply(window.BroxNative, args);
+                }
+                function selectRow(id, title, desc, options) {
+                    return '<div class="setting-row"><div><div>' + title + '</div>' + (desc ? '<div class="setting-desc">' + desc + '</div>' : '') + '</div>' +
+                        '<select id="' + id + '" class="setting-select">' + options.map(o => '<option value="' + o[0] + '">' + o[1] + '</option>').join('') + '</select></div>';
+                }
+                const ASK = [['ask', 'Sor'], ['allow', 'İzin ver'], ['block', 'Engelle']];
+
+                document.getElementById('block-list').insertAdjacentHTML('afterend',
+                    '<div class="setting-section-title">Site İzinleri</div>' +
+                    selectRow('perm-camera', 'Kamera', 'Sitelerin kamerayı kullanması', ASK) +
+                    selectRow('perm-mic', 'Mikrofon', 'Sitelerin mikrofonu kullanması', ASK) +
+                    selectRow('perm-location', 'Konum', 'Sitelerin konumunu öğrenmesi', ASK) +
+                    selectRow('perm-screenshot', 'Ekran Görüntüsü Alma', 'Uygulama açıkken ekran görüntüsü ve ekran kaydı', [['allow', 'İzin ver'], ['block', 'Engelle']]) +
+                    '<div class="setting-section-title">Güvenli DNS</div>' +
+                    selectRow('dns-provider', 'DNS Sağlayıcı', 'Android Özel DNS ile kullanılır', [['system', 'Sistem'], ['google', 'Google'], ['cloudflare', 'Cloudflare'], ['opendns', 'OpenDNS']]) +
+                    '<div class="setting-box">' +
+                        '<div class="warn-text" id="dns-info"></div>' +
+                        '<button class="sel-btn" id="dns-apply">Kopyala ve Ayarları Aç</button>' +
+                    '</div>');
+
+                // ---------- Site izinleri ----------
+                const camSel = document.getElementById('perm-camera');
+                const micSel = document.getElementById('perm-mic');
+                const locSel = document.getElementById('perm-location');
+                camSel.value = ls.getItem('brox_perm_camera') || 'ask';
+                micSel.value = ls.getItem('brox_perm_mic') || 'ask';
+                locSel.value = ls.getItem('brox_perm_location') || 'ask';
+                function sendPerms() {
+                    nat('setPermPolicy', JSON.stringify({ camera: camSel.value, mic: micSel.value, location: locSel.value }));
+                }
+                [['brox_perm_camera', camSel], ['brox_perm_mic', micSel], ['brox_perm_location', locSel]].forEach(p => {
+                    p[1].onchange = () => { ls.setItem(p[0], p[1].value); sendPerms(); };
+                });
+                setTimeout(sendPerms, 250);
+
+                // Ekran görüntüsü: mevcut "ekran görüntüsünü önle" anahtarıyla birlikte çalışır
+                const shotSel = document.getElementById('perm-screenshot');
+                function syncShotSelect() { shotSel.value = screenshotToggle.checked ? 'block' : 'allow'; }
+                syncShotSelect();
+                screenshotToggle.addEventListener('change', syncShotSelect);
+                shotSel.onchange = () => {
+                    screenshotToggle.checked = (shotSel.value === 'block');
+                    screenshotToggle.dispatchEvent(new Event('change'));
+                };
+
+                // ---------- Güvenli DNS ----------
+                const DNS = {
+                    system: { host: '', info: 'Android\'in kendi DNS ayarı kullanılır.' },
+                    google: { host: 'dns.google', info: 'Ana makine adı: dns.google' },
+                    cloudflare: { host: 'one.one.one.one', info: 'Ana makine adı: one.one.one.one' },
+                    opendns: { host: 'dns.opendns.com', info: 'Ana makine adı: dns.opendns.com (Cisco\'nun duyurusuna göre DNS-over-TLS destekleniyor). Çalışmazsa Özel DNS\'i Otomatik\'e geri al.' }
+                };
+                const dnsSel = document.getElementById('dns-provider');
+                const dnsInfo = document.getElementById('dns-info');
+                const dnsBtn = document.getElementById('dns-apply');
+                const PATH = 'Ayarlar → Bağlantılar → Diğer bağlantı ayarları → Özel DNS → "Özel DNS sağlayıcı ana makine adı"';
+                function renderDns() {
+                    const p = DNS[dnsSel.value] || DNS.system;
+                    dnsInfo.textContent = p.info + (p.host ? ' · Yol: ' + PATH : '') + ' · Uygulamanın kendisi DNS\'i değiştiremez, bu ayar tüm telefonu etkiler.';
+                    dnsBtn.style.display = p.host ? 'inline-block' : 'none';
+                }
+                dnsSel.value = ls.getItem('brox_dns_provider') || 'system';
+                dnsSel.onchange = () => { ls.setItem('brox_dns_provider', dnsSel.value); renderDns(); };
+                dnsBtn.onclick = () => {
+                    const p = DNS[dnsSel.value];
+                    if (!p || !p.host) return;
+                    nat('copyText', p.host);
+                    nat('openNetworkSettings');
+                    showToast('"' + p.host + '" kopyalandı, Özel DNS alanına yapıştır');
+                };
+                renderDns();
+            } catch (e) { console.log('Brox adim7c hatasi', e); }
+        })();
     </script>
 </body>
 </html>

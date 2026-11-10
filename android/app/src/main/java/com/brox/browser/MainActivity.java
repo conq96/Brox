@@ -69,6 +69,13 @@ public class MainActivity extends BridgeActivity {
     private boolean backgroundPlayback = true;
     private boolean bgServiceRunning = false;
     private static final int MAX_TAB_VIEWS = 10;
+    private volatile String permCamera = "ask";
+    private volatile String permMic = "ask";
+    private volatile String permLocation = "ask";
+    private ActivityResultLauncher<String[]> permLauncher;
+    private Runnable pendingPermAllow;
+    private Runnable pendingPermDeny;
+    private boolean pendingPermAny = false;
     private android.speech.tts.TextToSpeech tts;
     private boolean ttsReady = false;
     private String pendingSpeakLang;
@@ -106,6 +113,20 @@ public class MainActivity extends BridgeActivity {
 
         contentRoot = findViewById(android.R.id.content);
         BackgroundPlaybackService.stopMediaHook = () -> runOnUiThread(this::pauseAllMedia);
+        permLauncher = registerForActivityResult(
+            new ActivityResultContracts.RequestMultiplePermissions(),
+            result -> {
+                boolean all = true;
+                boolean any = false;
+                for (Boolean granted : result.values()) {
+                    if (granted != null && granted) any = true;
+                    else all = false;
+                }
+                Runnable next = (pendingPermAny ? any : all) ? pendingPermAllow : pendingPermDeny;
+                pendingPermAllow = null;
+                pendingPermDeny = null;
+                if (next != null) next.run();
+            });
         String exitClear = getSharedPreferences("brox_prefs", MODE_PRIVATE).getString("exit_clear", "");
         if (!exitClear.isEmpty()) clearBrowsingData(exitClear);
         getOnBackPressedDispatcher().addCallback(this, backCallback);
@@ -190,6 +211,16 @@ public class MainActivity extends BridgeActivity {
             @Override
             public void onProgressChanged(WebView view, int newProgress) {
                 if (newProgress < 100) injectBackgroundScript(view);
+            }
+
+            @Override
+            public void onPermissionRequest(final android.webkit.PermissionRequest request) {
+                handleWebPermission(request);
+            }
+
+            @Override
+            public void onGeolocationPermissionsShowPrompt(final String origin, final android.webkit.GeolocationPermissions.Callback callback) {
+                handleGeoPermission(origin, callback);
             }
 
             @Override
@@ -1064,6 +1095,120 @@ public class MainActivity extends BridgeActivity {
         for (WebView w : tabViews.values()) applyPrivacyTo(w, json);
     }
 
+    // ---------- Site izinleri (kamera, mikrofon, konum) ----------
+
+    private String combinePolicy(String a, String b) {
+        if ("block".equals(a) || "block".equals(b)) return "block";
+        if ("allow".equals(a) && "allow".equals(b)) return "allow";
+        return "ask";
+    }
+
+    private void ensureOsPermissions(String[] perms, boolean anyIsEnough, Runnable onAllow, Runnable onDeny) {
+        java.util.List<String> missing = new java.util.ArrayList<>();
+        for (String p : perms) {
+            if (checkSelfPermission(p) != android.content.pm.PackageManager.PERMISSION_GRANTED) missing.add(p);
+        }
+        if (missing.isEmpty() || (anyIsEnough && missing.size() < perms.length)) {
+            onAllow.run();
+            return;
+        }
+        pendingPermAllow = onAllow;
+        pendingPermDeny = onDeny;
+        pendingPermAny = anyIsEnough;
+        permLauncher.launch(missing.toArray(new String[0]));
+    }
+
+    private void decidePermission(String policy, String label, String host, Runnable allow, Runnable deny) {
+        if ("block".equals(policy)) {
+            deny.run();
+            return;
+        }
+        if ("allow".equals(policy)) {
+            allow.run();
+            return;
+        }
+        try {
+            new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle("İzin isteği")
+                .setMessage(host + " sitesi " + label + " erişimi istiyor.")
+                .setPositiveButton("İzin ver", (d, w) -> allow.run())
+                .setNegativeButton("Engelle", (d, w) -> deny.run())
+                .setOnCancelListener(d -> deny.run())
+                .show();
+        } catch (Exception e) {
+            deny.run();
+        }
+    }
+
+    private void handleWebPermission(final android.webkit.PermissionRequest request) {
+        java.util.List<String> granted = new java.util.ArrayList<>();
+        java.util.List<String> os = new java.util.ArrayList<>();
+        boolean cam = false;
+        boolean mic = false;
+        for (String r : request.getResources()) {
+            if (android.webkit.PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(r)) {
+                cam = true;
+                granted.add(r);
+                os.add("android.permission.CAMERA");
+            } else if (android.webkit.PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(r)) {
+                mic = true;
+                granted.add(r);
+                os.add("android.permission.RECORD_AUDIO");
+            }
+        }
+        if (granted.isEmpty()) {
+            request.deny();
+            return;
+        }
+        String policy = combinePolicy(cam ? permCamera : "allow", mic ? permMic : "allow");
+        String label = cam && mic ? "kamera ve mikrofon" : (cam ? "kamera" : "mikrofon");
+        String host = String.valueOf(request.getOrigin() == null ? "Site" : request.getOrigin().getHost());
+        final String[] osArr = os.toArray(new String[0]);
+        final String[] grantArr = granted.toArray(new String[0]);
+        decidePermission(policy, label, host,
+            () -> ensureOsPermissions(osArr, false, () -> request.grant(grantArr), request::deny),
+            request::deny);
+    }
+
+    private void handleGeoPermission(final String origin, final android.webkit.GeolocationPermissions.Callback callback) {
+        String host = "Site";
+        try {
+            String h = Uri.parse(origin).getHost();
+            if (h != null) host = h;
+        } catch (Exception ignored) {
+        }
+        final String[] osArr = {"android.permission.ACCESS_FINE_LOCATION", "android.permission.ACCESS_COARSE_LOCATION"};
+        decidePermission(permLocation, "konum", host,
+            () -> ensureOsPermissions(osArr, true, () -> callback.invoke(origin, true, false), () -> callback.invoke(origin, false, false)),
+            () -> callback.invoke(origin, false, false));
+    }
+
+    private void applyPermPolicy(String json) {
+        try {
+            JSONObject o = new JSONObject(json);
+            permCamera = o.optString("camera", "ask");
+            permMic = o.optString("mic", "ask");
+            permLocation = o.optString("location", "ask");
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void copyToClipboard(String text) {
+        try {
+            android.content.ClipboardManager cm = (android.content.ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+            if (cm != null) cm.setPrimaryClip(android.content.ClipData.newPlainText("Brox", text));
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void openNetworkSettings() {
+        try {
+            startActivity(new Intent(android.provider.Settings.ACTION_WIRELESS_SETTINGS));
+        } catch (Exception e) {
+            nativeToast("Ayarlar açılamadı");
+        }
+    }
+
     // ---------- Donanım Geri tuşu ----------
 
     private final OnBackPressedCallback backCallback = new OnBackPressedCallback(true) {
@@ -1442,6 +1587,21 @@ public class MainActivity extends BridgeActivity {
                 backgroundPlayback = on;
                 if (!on) stopBackgroundService();
             });
+        }
+
+        @JavascriptInterface
+        public void setPermPolicy(String json) {
+            applyPermPolicy(json);
+        }
+
+        @JavascriptInterface
+        public void copyText(String text) {
+            runOnUiThread(() -> copyToClipboard(text));
+        }
+
+        @JavascriptInterface
+        public void openNetworkSettings() {
+            runOnUiThread(() -> MainActivity.this.openNetworkSettings());
         }
     }
 }
