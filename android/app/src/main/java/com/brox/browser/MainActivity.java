@@ -69,6 +69,7 @@ public class MainActivity extends BridgeActivity {
     private boolean backgroundPlayback = true;
     private boolean bgServiceRunning = false;
     private static final int MAX_TAB_VIEWS = 10;
+    private volatile java.util.List<String[]> userScripts = new java.util.ArrayList<>();
     private volatile String permCamera = "ask";
     private volatile String permMic = "ask";
     private volatile String permLocation = "ask";
@@ -204,6 +205,7 @@ public class MainActivity extends BridgeActivity {
                 injectBackgroundScript(view);
                 if (desktopMode) applyDesktopViewport(view);
                 if (forceZoom) applyForceZoomScript(view);
+                runUserScripts(view, url);
             }
         });
 
@@ -1209,6 +1211,69 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
+    // ---------- Eklentiler (kullanıcı betikleri) ----------
+
+    private boolean matchesPattern(String url, String pattern) {
+        if (url == null || pattern == null) return false;
+        String p = pattern.trim();
+        if (p.isEmpty()) return false;
+        if (p.equals("*") || p.equals("<all_urls>")) return url.startsWith("http://") || url.startsWith("https://");
+        try {
+            StringBuilder sb = new StringBuilder("^");
+            for (char c : p.toCharArray()) {
+                if (c == '*') sb.append(".*");
+                else sb.append(java.util.regex.Pattern.quote(String.valueOf(c)));
+            }
+            sb.append("$");
+            return java.util.regex.Pattern.compile(sb.toString(), java.util.regex.Pattern.CASE_INSENSITIVE).matcher(url).matches();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private boolean matchesAny(String url, String patterns) {
+        String list = patterns == null ? "" : patterns.trim();
+        if (list.isEmpty()) return matchesPattern(url, "*");
+        for (String raw : list.split("[\\s,]+")) {
+            if (raw.isEmpty()) continue;
+            if (raw.contains("://") || raw.contains("*") || raw.equals("<all_urls>")) {
+                if (matchesPattern(url, raw)) return true;
+            } else {
+                String[] forms = {"*://" + raw + "/*", "*://" + raw, "*://*." + raw + "/*", "*://*." + raw};
+                for (String q : forms) {
+                    if (matchesPattern(url, q)) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private void applyUserScriptsJson(String json) {
+        java.util.List<String[]> out = new java.util.ArrayList<>();
+        try {
+            JSONArray arr = new JSONArray(json);
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject o = arr.getJSONObject(i);
+                if (!o.optBoolean("enabled", true)) continue;
+                String code = o.optString("code", "");
+                if (code.trim().isEmpty()) continue;
+                out.add(new String[]{o.optString("match", ""), code});
+            }
+        } catch (Exception ignored) {
+        }
+        userScripts = out;
+    }
+
+    private void runUserScripts(WebView view, String url) {
+        if (view == null || url == null) return;
+        if (!(url.startsWith("http://") || url.startsWith("https://"))) return;
+        for (String[] s : userScripts) {
+            if (matchesAny(url, s[0])) {
+                view.evaluateJavascript("(function(){try{\n" + s[1] + "\n}catch(e){console.log('Brox eklenti hatasi: '+e);}})();", null);
+            }
+        }
+    }
+
     // ---------- Donanım Geri tuşu ----------
 
     private final OnBackPressedCallback backCallback = new OnBackPressedCallback(true) {
@@ -1602,6 +1667,11 @@ public class MainActivity extends BridgeActivity {
         @JavascriptInterface
         public void openNetworkSettings() {
             runOnUiThread(() -> MainActivity.this.openNetworkSettings());
+        }
+
+        @JavascriptInterface
+        public void setUserScripts(String json) {
+            applyUserScriptsJson(json);
         }
     }
 }

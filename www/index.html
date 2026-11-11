@@ -1826,6 +1826,162 @@
                 renderDns();
             } catch (e) { console.log('Brox adim7c hatasi', e); }
         })();
+
+        // BROX-STEP8: Eklentiler (kullanıcı betikleri)
+        (function () {
+            try {
+                const ls = localStorage;
+                const KEY = 'brox_userscripts';
+                function nat(name) {
+                    const args = Array.prototype.slice.call(arguments, 1);
+                    if (window.BroxNative && typeof window.BroxNative[name] === 'function') return window.BroxNative[name].apply(window.BroxNative, args);
+                }
+                function el(tag, cls, text) {
+                    const e = document.createElement(tag);
+                    if (cls) e.className = cls;
+                    if (text !== undefined) e.textContent = text;
+                    return e;
+                }
+
+                const st = document.createElement('style');
+                st.textContent = `
+                .ext-form { display: none; flex-direction: column; gap: 10px; padding: 12px; overflow-y: auto; flex: 1; }
+                .ext-form textarea { width: 100%; min-height: 200px; box-sizing: border-box; background: var(--bg-surface); color: var(--text-main); border: 1px solid var(--border); border-radius: 8px; padding: 10px; font-family: monospace; font-size: 12px; outline: none; resize: vertical; }
+                `;
+                document.head.appendChild(st);
+
+                const backSvg = '<svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>';
+                document.body.insertAdjacentHTML('beforeend',
+                    '<div class="brox-panel" id="ext-panel">' +
+                        '<div class="panel-header"><button class="panel-back" id="ext-close">' + backSvg + '</button><span id="ext-title">Eklentiler</span><button class="panel-action" id="ext-new">Yeni</button></div>' +
+                        '<div class="panel-list" id="ext-list"></div>' +
+                        '<div class="ext-form" id="ext-form">' +
+                            '<div class="warn-text">Eklentiler, açtığın sitelerde çalışan JavaScript kodlarıdır. Sadece güvendiğin kodları ekle.</div>' +
+                            '<input type="text" id="ext-name" class="setting-input wide" placeholder="Eklenti adı">' +
+                            '<input type="text" id="ext-match" class="setting-input wide" placeholder="Çalışacağı siteler: site.com (boşsa tüm siteler)">' +
+                            '<textarea id="ext-code" placeholder="JavaScript kodu" spellcheck="false"></textarea>' +
+                            '<div style="display:flex;gap:8px;"><button class="sel-btn" id="ext-save">Kaydet</button><button class="sel-btn" id="ext-sample">Örnek</button><button class="sel-btn" id="ext-cancel">İptal</button></div>' +
+                        '</div>' +
+                    '</div>');
+
+                const extPanel = document.getElementById('ext-panel');
+                const listEl = document.getElementById('ext-list');
+                const formEl = document.getElementById('ext-form');
+                const titleEl = document.getElementById('ext-title');
+                const newBtn = document.getElementById('ext-new');
+                const nameIn = document.getElementById('ext-name');
+                const matchIn = document.getElementById('ext-match');
+                const codeIn = document.getElementById('ext-code');
+                let editingId = null;
+
+                const load = () => { try { const a = JSON.parse(ls.getItem(KEY)); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
+                function sync() {
+                    nat('setUserScripts', JSON.stringify(load().map(s => ({ match: s.match || '', code: s.code || '', enabled: s.enabled !== false }))));
+                }
+                function saveAll(list) { ls.setItem(KEY, JSON.stringify(list)); sync(); }
+
+                function showList() {
+                    formEl.style.display = 'none';
+                    listEl.style.display = 'block';
+                    newBtn.style.display = 'inline-block';
+                    titleEl.textContent = 'Eklentiler';
+                    render();
+                }
+                function showForm(script) {
+                    editingId = script ? script.id : null;
+                    nameIn.value = script ? script.name : '';
+                    matchIn.value = script ? (script.match || '') : '';
+                    codeIn.value = script ? script.code : '';
+                    listEl.style.display = 'none';
+                    formEl.style.display = 'flex';
+                    newBtn.style.display = 'none';
+                    titleEl.textContent = script ? 'Eklentiyi düzenle' : 'Yeni eklenti';
+                }
+
+                function render() {
+                    const list = load();
+                    listEl.innerHTML = '';
+                    if (!list.length) {
+                        listEl.appendChild(el('div', 'panel-empty', 'Henüz eklenti yok. "Yeni" ile bir JavaScript betiği ekleyebilirsin.'));
+                        return;
+                    }
+                    list.forEach(s => {
+                        const row = el('div', 'panel-item');
+                        const main = el('div', 'pi-main');
+                        main.appendChild(el('div', 'pi-title', s.name));
+                        main.appendChild(el('div', 'pi-sub', s.match ? s.match : 'Tüm siteler'));
+                        main.onclick = () => showForm(s);
+                        const sw = el('label', 'switch');
+                        const cb = document.createElement('input');
+                        cb.type = 'checkbox';
+                        cb.checked = s.enabled !== false;
+                        const sl = el('span', 'slider');
+                        sw.appendChild(cb); sw.appendChild(sl);
+                        cb.onchange = () => { s.enabled = cb.checked; saveAll(list); };
+                        const del = el('button', 'pi-del', '×');
+                        let t = null;
+                        del.onclick = (e) => {
+                            e.stopPropagation();
+                            if (!t) {
+                                del.textContent = 'Sil?';
+                                t = setTimeout(() => { del.textContent = '×'; t = null; }, 3000);
+                                return;
+                            }
+                            saveAll(list.filter(x => x.id !== s.id));
+                            render();
+                        };
+                        row.appendChild(main); row.appendChild(sw); row.appendChild(del);
+                        listEl.appendChild(row);
+                    });
+                }
+
+                document.getElementById('ext-save').onclick = () => {
+                    const name = nameIn.value.trim();
+                    const code = codeIn.value;
+                    if (!name) { showToast('Eklenti adı gerekli'); return; }
+                    if (!code.trim()) { showToast('Kod boş olamaz'); return; }
+                    const list = load();
+                    const match = matchIn.value.trim();
+                    const existing = editingId !== null ? list.find(x => x.id === editingId) : null;
+                    if (existing) { existing.name = name; existing.match = match; existing.code = code; }
+                    else list.unshift({ id: Date.now(), name: name, match: match, code: code, enabled: true });
+                    saveAll(list);
+                    showList();
+                    showToast('Eklenti kaydedildi');
+                };
+                document.getElementById('ext-cancel').onclick = showList;
+                document.getElementById('ext-sample').onclick = () => {
+                    if (!nameIn.value.trim()) nameIn.value = 'Örnek: arka planı koyu gri yap';
+                    codeIn.value = "// Bu kod seçtiğin sitelerde sayfa yüklenince çalışır\ndocument.body.style.backgroundColor = '#222222';";
+                };
+                newBtn.onclick = () => showForm(null);
+                document.getElementById('ext-close').onclick = () => {
+                    if (formEl.style.display === 'flex') showList(); else window.closeAllOverlays();
+                };
+
+                // Sayfa açıkken panel açılınca site gizlensin; geri tuşu paneli kapatsın
+                const prevClose = window.closeAllOverlays;
+                window.closeAllOverlays = function () {
+                    if (prevClose) prevClose();
+                    extPanel.style.display = 'none';
+                };
+                const IDS = ['dropdown-menu', 'tabs-menu', 'tabs-modal', 'settings-modal', 'shortcut-menu-modal', 'history-panel', 'downloads-panel', 'ext-panel'];
+                new MutationObserver(() => {
+                    const open = IDS.some(id => { const e = document.getElementById(id); return e && getComputedStyle(e).display !== 'none'; });
+                    nat('setOverlayOpen', open);
+                }).observe(extPanel, { attributes: true, attributeFilter: ['style'] });
+
+                document.getElementById('m-extensions').onclick = () => {
+                    dropdownMenu.style.display = 'none';
+                    if (window.closeBars) window.closeBars();
+                    window.closeAllOverlays();
+                    extPanel.style.display = 'flex';
+                    showList();
+                };
+
+                setTimeout(sync, 300);
+            } catch (e) { console.log('Brox adim8 hatasi', e); }
+        })();
     </script>
 </body>
 </html>
