@@ -20,6 +20,7 @@ import android.os.PowerManager;
 public class BackgroundPlaybackService extends Service {
 
     public static Runnable stopMediaHook;
+    public static Runnable idleHook;
 
     private static final String CHANNEL_ID = "brox_playback";
     private static final int NOTIF_ID = 4401;
@@ -129,6 +130,9 @@ public class BackgroundPlaybackService extends Service {
             if (wifiLock != null && wifiLock.isHeld()) wifiLock.release();
         } catch (Exception ignored) {
         }
+        Runnable h = idleHook;
+        idleHook = null;
+        if (h != null) h.run();
         super.onDestroy();
     }
 }

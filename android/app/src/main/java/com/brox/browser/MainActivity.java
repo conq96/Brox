@@ -69,6 +69,7 @@ public class MainActivity extends BridgeActivity {
     private boolean backgroundPlayback = true;
     private boolean bgServiceRunning = false;
     private static final int MAX_TAB_VIEWS = 10;
+    private static final java.util.List<WebView> orphanViews = new java.util.ArrayList<>();
     private volatile java.util.List<String[]> userScripts = new java.util.ArrayList<>();
     private volatile String permCamera = "ask";
     private volatile String permMic = "ask";
@@ -113,6 +114,7 @@ public class MainActivity extends BridgeActivity {
         }
 
         contentRoot = findViewById(android.R.id.content);
+        releaseOrphans();
         BackgroundPlaybackService.stopMediaHook = () -> runOnUiThread(this::pauseAllMedia);
         permLauncher = registerForActivityResult(
             new ActivityResultContracts.RequestMultiplePermissions(),
@@ -1274,6 +1276,38 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
+    private boolean isMusicActiveNow() {
+        try {
+            android.media.AudioManager am = (android.media.AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            return am != null && am.isMusicActive();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    // Uygulama kapatıldıktan sonra çalmaya devam eden sayfalar (servis bitince yok edilir)
+    private static void pauseOrphans() {
+        for (WebView w : orphanViews) {
+            try {
+                w.evaluateJavascript("(function(){var l=document.querySelectorAll('video,audio');"
+                    + "for(var i=0;i<l.length;i++){try{l[i].pause();}catch(e){}}})();", null);
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    private static void releaseOrphans() {
+        for (WebView w : new java.util.ArrayList<>(orphanViews)) {
+            try {
+                w.stopLoading();
+                w.loadUrl("about:blank");
+                w.destroy();
+            } catch (Exception ignored) {
+            }
+        }
+        orphanViews.clear();
+    }
+
     // ---------- Donanım Geri tuşu ----------
 
     private final OnBackPressedCallback backCallback = new OnBackPressedCallback(true) {
@@ -1306,6 +1340,10 @@ public class MainActivity extends BridgeActivity {
                 else goHome(true);
                 return;
             }
+            if (backgroundPlayback && isMusicActiveNow()) {
+                moveTaskToBack(true);
+                return;
+            }
             setEnabled(false);
             getOnBackPressedDispatcher().onBackPressed();
             setEnabled(true);
@@ -1326,14 +1364,29 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onDestroy() {
-        BackgroundPlaybackService.stopMediaHook = null;
-        stopBackgroundService();
+        // Medya çalarken uygulama kapatılırsa sayfalar yok edilmez; ön plan servisi süreci canlı tutar
+        boolean keepPlaying = isFinishing() && backgroundPlayback && bgServiceRunning && isMusicActiveNow();
+        if (keepPlaying) {
+            for (WebView w : tabViews.values()) {
+                try {
+                    if (contentRoot != null) contentRoot.removeView(w);
+                } catch (Exception ignored) {
+                }
+                orphanViews.add(w);
+            }
+            tabViews.clear();
+            BackgroundPlaybackService.stopMediaHook = MainActivity::pauseOrphans;
+            BackgroundPlaybackService.idleHook = MainActivity::releaseOrphans;
+        } else {
+            BackgroundPlaybackService.stopMediaHook = null;
+            stopBackgroundService();
+        }
         if (tts != null) {
             tts.stop();
             tts.shutdown();
             tts = null;
         }
-        if (isFinishing()) {
+        if (isFinishing() && !keepPlaying) {
             String exitClear = getSharedPreferences("brox_prefs", MODE_PRIVATE).getString("exit_clear", "");
             if (!exitClear.isEmpty()) clearBrowsingData(exitClear);
         }
