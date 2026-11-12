@@ -70,6 +70,10 @@ public class MainActivity extends BridgeActivity {
     private boolean bgServiceRunning = false;
     private static final int MAX_TAB_VIEWS = 10;
     private static final java.util.List<WebView> orphanViews = new java.util.ArrayList<>();
+    private final java.util.Map<WebView, androidx.webkit.ScriptHandler> bgScriptHandlers = new java.util.WeakHashMap<>();
+    private final android.os.Handler wdHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private boolean wdRunning = false;
+    private int wdTicks = 0;
     private volatile java.util.List<String[]> userScripts = new java.util.ArrayList<>();
     private volatile String permCamera = "ask";
     private volatile String permMic = "ask";
@@ -304,6 +308,7 @@ public class MainActivity extends BridgeActivity {
         s.setTextZoom(currentTextZoom);
         applyDarkTo(siteView, currentForceDark);
         if (lastPrivacyJson != null) applyPrivacyTo(siteView, lastPrivacyJson);
+        if (backgroundPlayback) installBgScript(siteView);
         return siteView;
     }
 
@@ -523,10 +528,70 @@ public class MainActivity extends BridgeActivity {
     }
 
     private void pauseAllMedia() {
+        wdRunning = false;
         for (WebView w : tabViews.values()) {
-            w.evaluateJavascript("(function(){var l=document.querySelectorAll('video,audio');"
+            w.evaluateJavascript("(function(){window.__broxStop=true;window.__broxResume=[];"
+                + "var l=document.querySelectorAll('video,audio');"
                 + "for(var i=0;i<l.length;i++){try{l[i].pause();}catch(e){}}})();", null);
         }
+    }
+
+    // Sayfa daha ilk satırdan önce "hep görünür" gibi davransın (YouTube vb. arka planda durdurmasın)
+    private void installBgScript(WebView v) {
+        if (v == null || bgScriptHandlers.containsKey(v)) return;
+        try {
+            if (androidx.webkit.WebViewFeature.isFeatureSupported(androidx.webkit.WebViewFeature.DOCUMENT_START_SCRIPT)) {
+                bgScriptHandlers.put(v, androidx.webkit.WebViewCompat.addDocumentStartJavaScript(
+                    v, BG_SCRIPT, java.util.Collections.singleton("*")));
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private void removeBgScript(WebView v) {
+        androidx.webkit.ScriptHandler h = bgScriptHandlers.remove(v);
+        if (h != null) {
+            try {
+                h.remove();
+            } catch (Throwable ignored) {
+            }
+        }
+    }
+
+    private static final String MARK_PLAYING_JS = "(function(){window.__broxStop=false;"
+        + "var l=document.querySelectorAll('video,audio');var a=[];"
+        + "for(var i=0;i<l.length;i++){if(!l[i].paused&&!l[i].ended)a.push(l[i]);}window.__broxResume=a;})();";
+
+    private static final String RESUME_JS = "(function(){if(window.__broxStop)return;"
+        + "var a=window.__broxResume||[];"
+        + "for(var i=0;i<a.length;i++){var m=a[i];try{if(m.paused&&!m.ended)m.play();}catch(e){}}})();";
+
+    // Uygulama arka plana alınırken çalan videolar site tarafından durdurulursa kısa süre içinde yeniden başlatılır
+    private final Runnable resumeWatchdog = new Runnable() {
+        @Override
+        public void run() {
+            if (!wdRunning || wdTicks++ >= 8) {
+                wdRunning = false;
+                return;
+            }
+            for (WebView w : tabViews.values()) w.evaluateJavascript(RESUME_JS, null);
+            wdHandler.postDelayed(this, 1000);
+        }
+    };
+
+    private void startResumeWatchdog() {
+        if (!backgroundPlayback || !isMusicActiveNow()) return;
+        for (WebView w : tabViews.values()) w.evaluateJavascript(MARK_PLAYING_JS, null);
+        wdTicks = 0;
+        wdRunning = true;
+        wdHandler.removeCallbacks(resumeWatchdog);
+        wdHandler.postDelayed(resumeWatchdog, 500);
+    }
+
+    private void stopResumeWatchdog() {
+        wdRunning = false;
+        wdHandler.removeCallbacks(resumeWatchdog);
+        for (WebView w : tabViews.values()) w.evaluateJavascript("window.__broxResume=[];", null);
     }
 
     private void startBackgroundService() {
@@ -1353,12 +1418,20 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onPause() {
         super.onPause();
+        if (backgroundPlayback) {
+            for (WebView w : tabViews.values()) {
+                w.onResume();
+                w.resumeTimers();
+            }
+        }
+        startResumeWatchdog();
         startBackgroundService();
     }
 
     @Override
     public void onResume() {
         super.onResume();
+        stopResumeWatchdog();
         stopBackgroundService();
     }
 
@@ -1703,6 +1776,10 @@ public class MainActivity extends BridgeActivity {
         public void setBackgroundPlayback(boolean on) {
             runOnUiThread(() -> {
                 backgroundPlayback = on;
+                for (WebView w : tabViews.values()) {
+                    if (on) installBgScript(w);
+                    else removeBgScript(w);
+                }
                 if (!on) stopBackgroundService();
             });
         }
